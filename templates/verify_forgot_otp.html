@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verify OTP • SwasthAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: { 950: "#070A0E", 900: "#0B1220", 800: "#101B2E" },
+              mint: { 500: "#1EE6B6" },
+              skyx: { 500: "#2FB5FF" }
+            }
+          }
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="bg-ink-950 text-white antialiased flex items-center justify-center min-h-screen p-4">
+    <!-- Background -->
+    <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10">
+      <div class="absolute inset-0 bg-[radial-gradient(1200px_500px_at_50%_10%,rgba(47,181,255,.15),transparent_60%)]"></div>
+    </div>
+
+    <div class="w-full max-w-md card-xl reveal animate-pop">
+      <div class="text-center mb-8">
+        <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 border border-white/15 mb-4 shadow-glow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-skyx-500">
+            <path d="M22 17.0022C22 18.1068 21.1046 19.0022 20 19.0022H4C2.89543 19.0022 2 18.1068 2 17.0022V7.0022C2 5.89763 2.89543 5.0022 4 5.0022H20C21.1046 5.0022 22 5.89763 22 7.0022V17.0022Z"></path>
+            <path d="M2 7.0022L12 14.0022L22 7.0022"></path>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight">Enter OTP</h1>
+        <p class="text-white/55 text-sm mt-2">Check your email for a 6-digit login code</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="mb-4 p-3 rounded-xl border {% if category == 'danger' %}border-rose-500/50 bg-rose-500/10 text-rose-200{% else %}border-mint-500/50 bg-mint-500/10 text-mint-200{% endif %} text-xs text-center">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" class="grid gap-6">
+        <div class="grid gap-2 text-sm text-center">
+          <input type="text" name="otp" class="input text-center text-3xl tracking-[1em] font-bold h-16" placeholder="000000" maxlength="6" pattern="\d{6}" required autofocus />
+        </div>
+        <button type="submit" class="btn-primary w-full justify-center py-3">Verify & Login</button>
+      </form>
+
+      <div class="mt-8 pt-6 border-t border-white/10 text-center">
+        <p class="text-white/55 text-sm">
+          Didn't receive the code? 
+          <a href="{{ url_for('forgot_password') }}" class="text-mint-500 hover:text-mint-300 font-medium transition">Try again</a>
+        </p>
+      </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -42,11 +42,3 @@ python app.py
 
 If the key is not set, the UI falls back to opening Google Maps search links.
 
-### Recommended: use a `.env` file (no terminal logging)
-
-1) Copy `.env.example` to `.env`
-2) Put your key in `.env`
-3) Run `python app.py`
-
-The `.env` file is ignored by git via `.gitignore`.
-

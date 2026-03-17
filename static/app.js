@@ -15,43 +15,66 @@ function nowLabel() {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function appendMessage({ role, html }) {
+function appendMessage({ role, html, imageSrc }) {
   const log = $("#chatLog");
   const wrap = document.createElement("div");
   wrap.className = "msg";
+  
+  let content = html;
+  if (imageSrc) {
+    content = `<img src="${imageSrc}" class="mb-2 max-h-48 rounded-lg border border-white/10 object-cover" />` + content;
+  }
+
   wrap.innerHTML = `
     <div class="meta">${role === "user" ? "You" : "SwasthAI"} • ${nowLabel()}</div>
-    <div class="bubble ${role === "user" ? "user" : "assistant"}">${html}</div>
+    <div class="bubble ${role === "user" ? "user" : "assistant"}">${content}</div>
   `;
   log.appendChild(wrap);
   log.scrollTop = log.scrollHeight;
 }
 
 function formatAssistantReply(reply) {
-  const causes = (reply.possible_causes || []).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
-  const precautions = (reply.precautions || []).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
-  const seek = (reply.seek_care_if || []).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
+  const uses = (reply.uses || []).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
+  const sideEffects = (reply.side_effects || []).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
 
   return `
-    <div class="font-semibold">${escapeHtml(reply.title || "Guidance")}</div>
-    <div class="mt-2 text-white/80">Here’s a general guide based on your message:</div>
-    <div class="list mt-3">
-      <div class="text-xs text-white/60 uppercase tracking-wide">Possible causes</div>
-      ${causes || `<div class="li">Share more details for better guidance.</div>`}
-    </div>
-    <div class="list mt-3">
-      <div class="text-xs text-white/60 uppercase tracking-wide">Precautions</div>
-      ${precautions || `<div class="li">Rest and monitor symptoms.</div>`}
-    </div>
-    <div class="list mt-3">
-      <div class="text-xs text-white/60 uppercase tracking-wide">Seek care if</div>
-      ${seek || `<div class="li">Symptoms are severe, worsening, or unusual.</div>`}
+    <div class="font-semibold text-mint-300 font-display text-lg">${escapeHtml(reply.medicine_name || "Medical Guidance")}</div>
+    <div class="mt-2 text-white/90 leading-relaxed">${escapeHtml(reply.dosage || "")}</div>
+    
+    ${uses ? `
+    <div class="list mt-4">
+      <div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Uses / Guidance</div>
+      ${uses}
+    </div>` : ""}
+
+    ${sideEffects ? `
+    <div class="list mt-4">
+      <div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Precautions / Risks</div>
+      ${sideEffects}
+    </div>` : ""}
+
+    <div class="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-3.5 text-xs text-rose-200/80 leading-snug">
+      <div class="flex items-center gap-2 mb-1.5 text-rose-400 font-bold uppercase tracking-wider text-[10px]">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+        Important Warning
+      </div>
+      ${escapeHtml(reply.warnings || "This information is for guidance only. Consult a qualified doctor for medical advice.")}
     </div>
   `;
 }
 
-async function sendChat(message) {
-  appendMessage({ role: "user", html: escapeHtml(message) });
+async function sendChat(message, imageFile) {
+  const language = $("#languageSelect")?.value || "English";
+  let imageSrc = null;
+  if (imageFile) {
+    imageSrc = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(imageFile);
+    });
+  }
+
+  appendMessage({ role: "user", html: escapeHtml(message), imageSrc });
 
   const thinkingId = `thinking-${Math.random().toString(16).slice(2)}`;
   const log = $("#chatLog");
@@ -66,10 +89,16 @@ async function sendChat(message) {
   log.scrollTop = log.scrollHeight;
 
   try {
+    const formData = new FormData();
+    formData.append("message", message);
+    formData.append("language", language);
+    if (imageFile) {
+      formData.append("image", imageFile);
+    }
+
     const res = await fetch("/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
+      body: formData,
     });
     const data = await res.json();
     thinking.remove();
@@ -104,13 +133,43 @@ function initChat() {
       <div class="mt-2 text-white/80">Tell me your symptoms and I’ll share possible causes, precautions, and red flags.</div>`,
   });
 
+  const imageInput = $("#imageInput");
+  const imagePreview = $("#imagePreview");
+  const previewImg = $("#previewImg");
+  const removeImgBtn = $("#removeImgBtn");
+
+  imageInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewImg.src = e.target.result;
+        imagePreview.classList.remove("hidden");
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  removeImgBtn.addEventListener("click", () => {
+    imageInput.value = "";
+    imagePreview.classList.add("hidden");
+    previewImg.src = "";
+  });
+
   $("#chatForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = $("#chatInput");
     const msg = (input.value || "").trim();
-    if (!msg) return;
+    const file = imageInput.files[0];
+
+    if (!msg && !file) return;
+
     input.value = "";
-    await sendChat(msg);
+    imageInput.value = "";
+    imagePreview.classList.add("hidden");
+    previewImg.src = "";
+
+    await sendChat(msg, file);
   });
 
   const promptButtons = $$(".chip, .prompt-chip");
@@ -172,25 +231,9 @@ function initFinder() {
   const placeSearchBtn = $("#placeSearchBtn");
   const hospitalsList = $("#hospitalsList");
   const apiBadge = $("#apiBadge");
-  const hospitalSelect = $("#hospitalSelect");
-  const showHospitalBtn = $("#showHospitalBtn");
-  if (
-    !locBtn ||
-    !openMapsBtn ||
-    !status ||
-    !mapFrame ||
-    !placeInput ||
-    !placeSearchBtn ||
-    !hospitalsList ||
-    !apiBadge ||
-    !hospitalSelect ||
-    !showHospitalBtn
-  )
-    return;
+  if (!locBtn || !openMapsBtn || !status || !mapFrame || !placeInput || !placeSearchBtn || !hospitalsList || !apiBadge) return;
 
   let coords = null;
-  let lastHospitals = [];
-  let lastCenter = null;
 
   function mapsSearchUrl(lat, lng, q = "hospital near me") {
     const qq = encodeURIComponent(q);
@@ -204,51 +247,8 @@ function initFinder() {
     mapFrame.src = `https://www.google.com/maps?q=${encodeURIComponent(`${q} near ${lat},${lng}`)}&output=embed`;
   }
 
-  function setMapToPoint(lat, lng, label) {
-    mapFrame.src = `https://www.google.com/maps?q=${encodeURIComponent(`${label || "hospital"} @ ${lat},${lng}`)}&output=embed`;
-  }
-
   function setApiMode(mode) {
     apiBadge.textContent = mode;
-  }
-
-  function haversineKm(a, b) {
-    const R = 6371;
-    const toRad = (x) => (x * Math.PI) / 180;
-    const dLat = toRad(b.lat - a.lat);
-    const dLng = toRad(b.lng - a.lng);
-    const lat1 = toRad(a.lat);
-    const lat2 = toRad(b.lat);
-    const s =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2);
-    return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
-  }
-
-  function chooseNearestHospital(center, items) {
-    if (!center || !items?.length) return null;
-    const c = { lat: center.lat, lng: center.lng };
-    let best = null;
-    let bestD = Infinity;
-    for (const h of items) {
-      const lat = h.location?.lat;
-      const lng = h.location?.lng;
-      if (lat == null || lng == null) continue;
-      const d = haversineKm(c, { lat, lng });
-      if (d < bestD) {
-        bestD = d;
-        best = h;
-      }
-    }
-    return best;
-  }
-
-  function showHospitalOnMap(h) {
-    if (!h) return;
-    const lat = h.location?.lat;
-    const lng = h.location?.lng;
-    if (lat == null || lng == null) return;
-    setMapToPoint(lat, lng, h.name || "hospital");
   }
 
   function hospitalRow(h) {
@@ -286,26 +286,14 @@ function initFinder() {
 
   function renderHospitals(items) {
     if (!items || !items.length) {
-      hospitalSelect.innerHTML = `<option value="">No hospitals found</option>`;
-      hospitalSelect.disabled = true;
-      showHospitalBtn.disabled = true;
       hospitalsList.innerHTML = `<div class="text-white/55 text-sm">No hospitals found.</div>`;
       return;
     }
-    hospitalSelect.innerHTML = items
-      .map((h, idx) => {
-        const label = [h.name, h.address].filter(Boolean).join(" — ");
-        return `<option value="${idx}">${escapeHtml(label || "Hospital")}</option>`;
-      })
-      .join("");
-    hospitalSelect.disabled = false;
-    showHospitalBtn.disabled = false;
     hospitalsList.innerHTML = items.map(hospitalRow).join("");
   }
 
   async function fetchHospitalsByCoords(lat, lng, label) {
     coords = { latitude: lat, longitude: lng };
-    lastCenter = { lat, lng };
     status.textContent = label || `Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}`;
     setMapsUrl(lat, lng);
 
@@ -314,30 +302,13 @@ function initFinder() {
       const data = await res.json();
       if (res.ok) {
         setApiMode("Places API");
-        lastHospitals = data.results || [];
-        renderHospitals(lastHospitals);
-
-        // Default to nearest hospital every time.
-        const nearest = chooseNearestHospital(lastCenter, lastHospitals);
-        if (nearest) {
-          const idx = lastHospitals.indexOf(nearest);
-          if (idx >= 0) hospitalSelect.value = String(idx);
-          showHospitalOnMap(nearest);
-        }
+        renderHospitals(data.results || []);
         return;
       }
       setApiMode("Fallback");
-      lastHospitals = [];
-      hospitalSelect.innerHTML = `<option value="">API key not set</option>`;
-      hospitalSelect.disabled = true;
-      showHospitalBtn.disabled = true;
       renderHospitals([]);
     } catch {
       setApiMode("Fallback");
-      lastHospitals = [];
-      hospitalSelect.innerHTML = `<option value="">API unavailable</option>`;
-      hospitalSelect.disabled = true;
-      showHospitalBtn.disabled = true;
       renderHospitals([]);
     }
   }
@@ -377,18 +348,13 @@ function initFinder() {
     if (!q) return;
     hospitalsList.innerHTML = `<div class="text-white/55 text-sm">Searching…</div>`;
     setApiMode("Geocoding");
-    hospitalSelect.innerHTML = `<option value="">Searching…</option>`;
-    hospitalSelect.disabled = true;
-    showHospitalBtn.disabled = true;
 
     // Try backend Geocoding API (requires GOOGLE_MAPS_API_KEY).
     try {
       const res = await fetch(`/api/geocode?address=${encodeURIComponent(q)}`);
       const data = await res.json();
       if (!res.ok) {
-        const details = data?.details ? ` (${data.details})` : "";
-        const gm = data?.error_message ? ` — ${data.error_message}` : "";
-        throw new Error(`${data?.error || "geocode failed"}${details}${gm}`);
+        throw new Error(data?.error || "geocode failed");
       }
       const lat = data.location?.lat;
       const lng = data.location?.lng;
@@ -396,17 +362,11 @@ function initFinder() {
       setMapsUrl(lat, lng, "hospital");
       await fetchHospitalsByCoords(lat, lng, data.formatted_address || q);
       return;
-    } catch (err) {
-      const msg = String(err?.message || "");
+    } catch {
       // Fallback: just open Google Maps search for the typed place.
-      setApiMode(msg.includes("REQUEST_DENIED") ? "Denied" : "Fallback");
+      setApiMode("Fallback");
       hospitalsList.innerHTML = `
-        <div class="text-white/55 text-sm">${
-          msg
-            ? `Google API request failed: <span class="text-white/80">${escapeHtml(msg)}</span>`
-            : "Google API request failed."
-        }</div>
-        <div class="mt-1 text-white/55 text-sm">Using Google Maps search link instead.</div>
+        <div class="text-white/55 text-sm">API key not set (or request failed). Using Google Maps search link instead.</div>
         <a class="mt-2 inline-flex text-sm text-skyx-200 hover:text-skyx-50 transition" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
           `hospital in ${q}`
         )}" target="_blank" rel="noreferrer">Search “hospital in ${escapeHtml(q)}” ↗</a>
@@ -415,9 +375,6 @@ function initFinder() {
       openMapsBtn.disabled = false;
       openMapsBtn.onclick = () =>
         window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`hospital in ${q}`)}`, "_blank", "noopener,noreferrer");
-      hospitalSelect.innerHTML = `<option value="">(Set API key to list hospitals here)</option>`;
-      hospitalSelect.disabled = true;
-      showHospitalBtn.disabled = true;
     }
   }
 
@@ -427,18 +384,6 @@ function initFinder() {
       e.preventDefault();
       searchPlace();
     }
-  });
-
-  hospitalSelect.addEventListener("change", () => {
-    const idx = Number(hospitalSelect.value);
-    const h = lastHospitals?.[idx];
-    if (h) showHospitalOnMap(h);
-  });
-
-  showHospitalBtn.addEventListener("click", () => {
-    const idx = Number(hospitalSelect.value);
-    const h = lastHospitals?.[idx];
-    if (h) showHospitalOnMap(h);
   });
 }
 
@@ -527,11 +472,45 @@ function initData() {
   loadSchemes();
 }
 
+function initProfile() {
+  const profileBtn = $("#profileBtn");
+  const profileSidebar = $("#profileSidebar");
+  const profileOverlay = $("#profileOverlay");
+  const closeProfileBtn = $("#closeProfileBtn");
+
+  if (!profileBtn || !profileSidebar || !profileOverlay || !closeProfileBtn) return;
+
+  const openProfile = () => {
+    profileSidebar.classList.remove("-translate-x-full");
+    profileOverlay.classList.remove("hidden");
+    // Force a reflow to trigger transition
+    profileOverlay.offsetHeight;
+    profileOverlay.classList.add("opacity-100");
+    document.body.style.overflow = "hidden";
+  };
+
+  const closeProfile = () => {
+    profileSidebar.classList.add("-translate-x-full");
+    profileOverlay.classList.remove("opacity-100");
+    document.body.style.overflow = "";
+    setTimeout(() => {
+      if (profileSidebar.classList.contains("-translate-x-full")) {
+        profileOverlay.classList.add("hidden");
+      }
+    }, 500);
+  };
+
+  profileBtn.addEventListener("click", openProfile);
+  closeProfileBtn.addEventListener("click", closeProfile);
+  profileOverlay.addEventListener("click", closeProfile);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initMenu();
   initReveal();
   initChat();
   initFinder();
   initData();
+  initProfile();
 });
 
