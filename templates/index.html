@@ -80,16 +80,19 @@
     <!-- Top nav -->
     <header class="sticky top-0 z-50 backdrop-blur-xl bg-ink-950/65 border-b border-white/10">
       <div class="mx-auto max-w-6xl px-4 sm:px-6">
-        <div class="flex items-center justify-between py-3">
-          <a href="#top" class="group inline-flex items-center gap-2">
-            <span class="relative grid place-items-center h-9 w-9 rounded-xl bg-white/10 border border-white/15 shadow-soft">
-              <span class="h-3.5 w-3.5 rounded-full bg-gradient-to-br from-mint-500 to-skyx-500"></span>
-            </span>
-            <span class="font-semibold tracking-tight text-white/95">SwasthAI</span>
-            <span class="hidden sm:inline text-xs text-white/55 border border-white/10 rounded-full px-2 py-0.5">Smart healthcare</span>
+        <div class="flex items-center justify-between gap-3 py-3 md:grid md:grid-cols-[auto,1fr,auto] md:items-center md:py-4">
+          <!-- Brand (logo only, no extra text) -->
+          <a href="#top" class="group inline-flex items-center min-w-0">
+            <img
+              src="/static/Gemini_Generated_Image_nw2rotnw2rotnw2r-removebg-preview.png"
+              alt="SwasthAI logo"
+              class="h-10 sm:h-12 md:h-16 w-auto max-w-[160px] sm:max-w-[220px] md:max-w-none object-contain object-left drop-shadow-[0_10px_28px_rgba(0,0,0,0.65)] group-hover:drop-shadow-[0_14px_40px_rgba(0,0,0,0.75)] transition"
+              loading="eager"
+            />
           </a>
 
-          <nav class="hidden md:flex items-center gap-1 text-sm text-white/75">
+          <!-- Center nav (matches screenshot structure) -->
+          <nav class="hidden md:flex items-center justify-center gap-1 text-sm text-white/75">
             <a class="navlink" href="#chat">Chatbot</a>
             <a class="navlink" href="#finder">Hospitals</a>
             <a class="navlink" href="#doctors">Doctors</a>
@@ -485,6 +488,52 @@
     <div id="profileOverlay" class="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-500"></div>
 
     <script src="/static/app.js?v={{ build_time }}"></script>
+
+    <!-- Floating Chatbot UI (Bottom Right) -->
+    <button
+      id="floatChatBtn"
+      type="button"
+      class="fixed bottom-6 right-6 z-[120] h-14 w-14 rounded-full bg-skyx-600 text-white shadow-glow border border-white/10 grid place-items-center hover:brightness-110 active:translate-y-px transition animate-bounce"
+      aria-label="Open SwasthAI chat"
+    >
+      💬
+    </button>
+
+    <div
+      id="floatChatBox"
+      class="hidden fixed bottom-24 right-6 z-[120] w-[22rem] max-w-[calc(100vw-3rem)] rounded-2xl border border-white/10 bg-ink-950/95 backdrop-blur-xl shadow-glow overflow-hidden"
+      role="dialog"
+      aria-label="SwasthAI Assistant"
+    >
+      <div class="flex items-center justify-between gap-3 bg-white/5 border-b border-white/10 px-4 py-3">
+        <div class="font-semibold tracking-tight">SwasthAI Assistant</div>
+        <button id="floatChatClose" class="h-8 w-8 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition grid place-items-center" aria-label="Close chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="px-3 pt-3 pb-2 border-b border-white/10 bg-white/5">
+        <div class="text-[10px] text-white/40 uppercase tracking-[0.16em] font-bold">Suggested</div>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <button class="chip" type="button" data-float-prompt="Find doctor near me">Find doctor</button>
+          <button class="chip" type="button" data-float-prompt="Need blood">Need blood</button>
+          <button class="chip" type="button" data-float-prompt="Government help schemes">Schemes</button>
+        </div>
+      </div>
+
+      <div id="floatChatMessages" class="p-3 h-72 overflow-y-auto text-sm bg-[rgba(7,10,14,0.35)]"></div>
+
+      <div class="flex gap-2 p-3 border-t border-white/10 bg-white/5">
+        <input
+          id="floatChatInput"
+          type="text"
+          class="input flex-1"
+          placeholder="Ask anything…"
+          autocomplete="off"
+        />
+        <button id="floatChatSend" type="button" class="btn-primary shrink-0 px-4">Send</button>
+      </div>
+    </div>
   </body>
 </html>
 
