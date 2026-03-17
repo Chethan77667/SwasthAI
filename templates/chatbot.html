@@ -41,14 +41,17 @@
 
     <!-- Top nav -->
     <header class="sticky top-0 z-50 backdrop-blur-xl bg-ink-950/65 border-b border-white/10">
-      <div class="mx-auto max-w-6xl px-4 sm:px-6">
-        <div class="flex items-center justify-between py-3">
-          <a href="{{ url_for('home') }}" class="group inline-flex items-center gap-2">
-            <span class="relative grid place-items-center h-9 w-9 rounded-xl bg-white/10 border border-white/15 shadow-soft">
-              <span class="h-3.5 w-3.5 rounded-full bg-gradient-to-br from-mint-500 to-skyx-500"></span>
-            </span>
-            <span class="font-semibold tracking-tight text-white/95">SwasthAI</span>
-            <span class="hidden sm:inline text-xs text-white/55 border border-white/10 rounded-full px-2 py-0.5">Smart healthcare</span>
+      <div class="mx-auto max-w-6xl px-3 sm:px-4">
+        <div class="flex items-center justify-between gap-3 py-2">
+          <a href="{{ url_for('home') }}" class="group inline-flex items-center min-w-0">
+            <div class="max-w-[200px] sm:max-w-[240px] w-full">
+              <img
+                src="/static/Gemini_Generated_Image_r973ssr973ssr973-removebg-preview.png"
+                alt="SwasthAI"
+                class="w-full h-auto object-contain object-left drop-shadow-[0_10px_28px_rgba(0,0,0,0.55)] transition group-hover:drop-shadow-[0_14px_40px_rgba(0,0,0,0.7)]"
+                loading="eager"
+              />
+            </div>
           </a>
 
           <nav class="hidden md:flex items-center gap-1 text-sm text-white/75">
@@ -61,7 +64,7 @@
           </nav>
 
           <div class="flex items-center gap-2">
-            <div class="flex items-center gap-2 mr-2 sm:mr-4">
+            <div class="flex items-center gap-2 mr-2 sm:mr-3">
               <div class="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
                 <span class="h-2 w-2 rounded-full bg-mint-500/90"></span>
                 <span class="text-white/85">Hello, {{ current_user.name or current_user.email.split('@')[0] }}</span>
