@@ -14,7 +14,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
 
-# Load environment variables from .env file
+# Load environment variables from .env
 load_dotenv()
 
 
