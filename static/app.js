@@ -22,13 +22,13 @@ const I18N = {
     "nav.hospitals": "अस्पताल",
     "nav.doctors": "डॉक्टर",
     "nav.schemes": "योजनाएँ",
-    "cta.try_chatbot": "चैटबॉट आज़माएँ",
+    "cta.try_chatbot": "चैटबॉट आज़ಮಾएँ",
     "cta.find_hospitals": "अस्पताल खोजें",
     "home.kicker": "AI सहायता • नज़दीकी अस्पताल • डॉक्टर • योजनाएँ",
     "home.hero_1": "स्वास्थ्य सहायता,",
     "home.hero_2": "कभी भी",
     "home.subtitle":
-      "SwasthAI एक स्मार्ट हेल्थकेयर सहायता प्लेटफ़ॉर्म है—खासकर ग्रामीण समुदायों के लिए उपयोगी। लक्षण बताएँ, नज़दीकी अस्पताल खोजें, डॉक्टरों से संपर्क करें और सरकारी स्वास्थ्य योजनाओं के बारे में जानें।"
+      "SwasthAI एक स्मार्ट हेल्थकेಯ सहायता प्लेटफ़ॉर्म है—खासकर ग्रामीण समुदायों के लिए उपयोगी। लक्षण बताएँ, नज़दीकी अस्पताल खोजें, डॉक्टरों से संपर्क करें और सरकारी स्वास्थ्य योजनाओं के बारे में जानें।"
   },
   kn: {
     "nav.home": "ಮುಖಪುಟ",
@@ -74,18 +74,12 @@ function initSiteLanguage() {
   sel.addEventListener("change", () => {
     setLang(sel.value);
     applyI18n();
-    // sync chatbot language selector if present
     const chatSel = $("#languageSelect");
     if (chatSel) {
       chatSel.value = sel.value === "hi" ? "Hindi" : sel.value === "kn" ? "Kannada" : "English";
     }
   });
-  // initial apply
   applyI18n();
-  const chatSel = $("#languageSelect");
-  if (chatSel) {
-    chatSel.value = sel.value === "hi" ? "Hindi" : sel.value === "kn" ? "Kannada" : "English";
-  }
 }
 
 function escapeHtml(str) {
@@ -102,21 +96,14 @@ function nowLabel() {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function appendMessage({ role, html, imageSrc }) {
-  const log = $("#chatLog");
-  if (!log) return;
-  appendMessageToLog(log, { role, html, imageSrc });
-}
-
 function appendMessageToLog(log, { role, html, imageSrc }) {
+  if (!log) return;
   const wrap = document.createElement("div");
   wrap.className = "msg";
-  
   let content = html;
   if (imageSrc) {
     content = `<img src="${imageSrc}" class="mb-2 max-h-48 rounded-lg border border-white/10 object-cover" />` + content;
   }
-
   wrap.innerHTML = `
     <div class="meta">${role === "user" ? "You" : "SwasthAI"} • ${nowLabel()}</div>
     <div class="bubble ${role === "user" ? "user" : "assistant"}">${content}</div>
@@ -125,423 +112,95 @@ function appendMessageToLog(log, { role, html, imageSrc }) {
   log.scrollTop = log.scrollHeight;
 }
 
-function isNewFormat(reply) {
-  return reply && (typeof reply.type === "string" || typeof reply.title === "string" || Array.isArray(reply.points));
-}
-
 function normalizeReply(reply) {
-  if (isNewFormat(reply)) {
-    return {
-      type: reply.type || "general",
-      title: reply.title || "SwasthAI",
-      description: reply.description || "",
-      points: Array.isArray(reply.points) ? reply.points : [],
-      action: reply.action || "",
-      warning: reply.warning || "",
-    };
-  }
-
-  // Backward-compat (older schema)
   return {
-    type: "medical",
-    title: reply?.medicine_name || "Medical Guidance",
-    description: reply?.dosage || "",
-    points: Array.isArray(reply?.uses) ? reply.uses : [],
-    action: "",
-    warning: reply?.warnings || "This information is for guidance only. Consult a qualified doctor for medical advice.",
+    type: reply?.type || "general",
+    title: reply?.title || "SwasthAI",
+    description: reply?.description || "",
+    points: Array.isArray(reply?.points) ? reply.points : [],
+    action: reply?.action || "",
+    warning: reply?.warning || "",
   };
 }
 
 function formatAssistantReply(reply) {
   const r = normalizeReply(reply || {});
-  const pts = (r.points || []).slice(0, 5).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
-
+  const pts = (r.points || []).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
   return `
     <div class="flex items-center justify-between gap-3">
-      <div class="font-semibold text-mint-300 font-display text-lg">${escapeHtml(r.title || "SwasthAI")}</div>
-      <div class="badge">${escapeHtml((r.type || "general").toLowerCase())}</div>
+      <div class="font-semibold text-mint-300 font-display text-lg">${escapeHtml(r.title)}</div>
+      <div class="badge">${escapeHtml((r.type).toLowerCase())}</div>
     </div>
     ${r.description ? `<div class="mt-2 text-white/90 leading-relaxed">${escapeHtml(r.description)}</div>` : ""}
-    
-    ${pts ? `
-    <div class="list mt-4">
-      <div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Key points</div>
-      ${pts}
-    </div>` : ""}
-
-    ${r.action ? `
-      <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3.5 text-sm text-white/80">
-        <div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Next action</div>
-        <div class="mt-1">${escapeHtml(r.action)}</div>
-      </div>
-    ` : ""}
-
-    ${r.warning ? `
-    <div class="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-3.5 text-xs text-rose-200/80 leading-snug">
-      <div class="flex items-center gap-2 mb-1.5 text-rose-400 font-bold uppercase tracking-wider text-[10px]">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
-        Note
-      </div>
-      ${escapeHtml(r.warning)}
-    </div>
-    ` : ""}
+    ${pts ? `<div class="list mt-4"><div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Key points</div>${pts}</div>` : ""}
+    ${r.action ? `<div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3.5 text-sm text-white/80"><div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Next action</div><div class="mt-1">${escapeHtml(r.action)}</div></div>` : ""}
+    ${r.warning ? `<div class="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-3.5 text-xs text-rose-200/80 leading-snug"><div class="flex items-center gap-2 mb-1.5 text-rose-400 font-bold uppercase tracking-wider text-[10px]"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>Note</div>${escapeHtml(r.warning)}</div>` : ""}
   `;
-}
-
-function typingDotsHtml(label = "Typing") {
-  return `
-    <div class="typing">
-      <span class="typing-label">${escapeHtml(label)}</span>
-      <span class="typing-dots" aria-hidden="true">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-      </span>
-    </div>
-  `;
-}
-
-function tryPlayPing() {
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sine";
-    o.frequency.value = 740;
-    g.gain.value = 0.0001;
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.start();
-    const t0 = ctx.currentTime;
-    g.gain.exponentialRampToValueAtTime(0.06, t0 + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
-    o.stop(t0 + 0.2);
-    setTimeout(() => ctx.close?.(), 250);
-  } catch {
-    // ignore
-  }
-}
-
-function getQuickLocalReply(message) {
-  const t = String(message || "").trim().toLowerCase();
-  if (!t) return null;
-
-  const isHi = /^(hi|hello|hey|hii|hlo)\b/.test(t) || t === "hi" || t === "hello";
-  if (isHi) {
-    return {
-      type: "general",
-      title: "Hi 👋 I'm SwasthAI Assistant.",
-      description: "I can help you with:",
-      points: ["Find doctors 🏥", "Blood donors 🩸", "Government schemes 📄", "Health questions 💊"],
-      action: "Tell me what you need today (doctor / blood / schemes / symptoms).",
-      warning: "For emergencies, visit the nearest hospital or call local emergency services.",
-      _intent: "greeting",
-    };
-  }
-
-  if (t.includes("doctor")) {
-    return {
-      type: "feature",
-      title: "Find a doctor 🏥",
-      description: "You can use the Doctors section to contact available doctors.",
-      points: ["Open the Doctors section", "Choose specialty", "Call or WhatsApp"],
-      action: "Scroll to the Doctors section now.",
-      warning: "For severe symptoms, seek urgent medical care.",
-      _intent: "doctor",
-    };
-  }
-
-  if (t.includes("blood") || t.includes("donor")) {
-    return {
-      type: "feature",
-      title: "Need blood 🩸",
-      description: "Use the Blood Donor system to request donors and share your details.",
-      points: ["Mention blood group", "Share location/area", "Add contact number", "Urgency + hospital name (if available)"],
-      action: "Tell me: blood group + city/area + contact number.",
-      warning: "If it’s an emergency, go to the nearest hospital immediately.",
-      _intent: "blood",
-    };
-  }
-
-  if (t.includes("scheme") || t.includes("schemes") || t.includes("government") || t.includes("govt")) {
-    return {
-      type: "feature",
-      title: "Government schemes 📄",
-      description: "You can check the Schemes section for available programs and how to use them.",
-      points: ["Open Schemes section", "Read eligibility/summary", "Follow the ‘How to use’ steps"],
-      action: "Scroll to the Schemes section now.",
-      warning: "Always verify the latest eligibility at official sources or your nearest health center.",
-      _intent: "schemes",
-    };
-  }
-
-  return null;
 }
 
 async function sendChat(message, imageFile, opts = {}) {
   const logEl = opts.logEl || $("#chatLog");
   if (!logEl) return;
-  const language = $("#languageSelect")?.value || "English";
   let imageSrc = null;
   if (imageFile) {
-    imageSrc = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.readAsDataURL(imageFile);
+    imageSrc = await new Promise((res) => {
+      const r = new FileReader(); r.onload = (e) => res(e.target.result); r.readAsDataURL(imageFile);
     });
   }
-
   appendMessageToLog(logEl, { role: "user", html: escapeHtml(message), imageSrc });
-
-  // Local "real chatbot" behavior for common intents (instant replies)
-  if (!imageFile) {
-    const local = getQuickLocalReply(message);
-    if (local) {
-      appendMessageToLog(logEl, { role: "assistant", html: formatAssistantReply(local) });
-      if (opts.playSound) tryPlayPing();
-      if (local._intent === "doctor") location.hash = "#doctors";
-      if (local._intent === "schemes") location.hash = "#schemes";
-      return;
-    }
-  }
-
-  const thinkingId = `thinking-${Math.random().toString(16).slice(2)}`;
   const thinking = document.createElement("div");
   thinking.className = "msg";
-  thinking.id = thinkingId;
-  thinking.innerHTML = `
-    <div class="meta">SwasthAI • ${nowLabel()}</div>
-    <div class="bubble assistant"><div class="text-white/80 text-sm mb-1">Typing…</div>${typingDotsHtml("")}</div>
-  `;
+  thinking.innerHTML = `<div class="meta">SwasthAI • ${nowLabel()}</div><div class="bubble assistant">Typing...</div>`;
   logEl.appendChild(thinking);
   logEl.scrollTop = logEl.scrollHeight;
 
   try {
-    const formData = new FormData();
-    formData.append("message", message);
-    formData.append("language", language);
-    if (imageFile) {
-      formData.append("image", imageFile);
-    }
-
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      body: formData,
-    });
+    const fd = new FormData();
+    fd.append("message", message);
+    fd.append("language", $("#languageSelect")?.value || "English");
+    if (imageFile) fd.append("image", imageFile);
+    const res = await fetch("/api/chat", { method: "POST", body: fd });
     const data = await res.json();
     thinking.remove();
-
-    if (!res.ok) {
-      appendMessageToLog(logEl, {
-        role: "assistant",
-        html: `<div class="font-semibold">Couldn’t process</div><div class="mt-2 text-white/80">${escapeHtml(data?.error || "Please try again.")}</div>`,
-      });
-      return;
-    }
-
-    appendMessageToLog(logEl, { role: "assistant", html: formatAssistantReply(data.reply || {}) });
-    if (opts.playSound) tryPlayPing();
+    appendMessageToLog(logEl, { role: "assistant", html: formatAssistantReply(data.reply) });
   } catch (e) {
     thinking.remove();
-    appendMessageToLog(logEl, {
-      role: "assistant",
-      html: `<div class="font-semibold">Network issue</div><div class="mt-2 text-white/80">Please check your connection and try again.</div>`,
-    });
   }
 }
 
 function initChat() {
   const log = $("#chatLog");
-  if (!log) {
-    // If user clicks a prompt chip on landing page, route them to the chatbot page.
-    const promptButtons = $$(".chip, .prompt-chip");
-    for (const btn of promptButtons) {
-      btn.addEventListener("click", () => {
-        const prompt = btn.getAttribute("data-prompt");
-        const url = new URL("/chatbot", window.location.origin);
-        if (prompt) url.searchParams.set("prompt", prompt);
-        window.location.href = url.toString();
-      });
-    }
-    return;
-  }
-
-  appendMessageToLog(log, {
-    role: "assistant",
-    html: `<div class="font-semibold">Hi! I’m SwasthAI.</div>
-      <div class="mt-2 text-white/80">Tell me your symptoms and I’ll share possible causes, precautions, and red flags.</div>`,
-  });
-
-  const imageInput = $("#imageInput");
-  const imagePreview = $("#imagePreview");
-  const previewImg = $("#previewImg");
-  const removeImgBtn = $("#removeImgBtn");
-
-  imageInput.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        previewImg.src = e.target.result;
-        imagePreview.classList.remove("hidden");
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-
-  removeImgBtn.addEventListener("click", () => {
-    imageInput.value = "";
-    imagePreview.classList.add("hidden");
-    previewImg.src = "";
-  });
-
-  $("#chatForm").addEventListener("submit", async (e) => {
+  if (!log) return;
+  $("#chatForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = $("#chatInput");
     const msg = (input.value || "").trim();
-    const file = imageInput.files[0];
-
-    if (!msg && !file) return;
-
-    input.value = "";
-    imageInput.value = "";
-    imagePreview.classList.add("hidden");
-    previewImg.src = "";
-
-    await sendChat(msg, file);
+    if (msg) { input.value = ""; await sendChat(msg); }
   });
-
-  const promptButtons = $$(".chip, .prompt-chip");
-  for (const btn of promptButtons) {
-    btn.addEventListener("click", async () => {
-      const prompt = btn.getAttribute("data-prompt");
-      if (!prompt) return;
-      $("#chatInput").value = prompt;
-      $("#chatInput").focus();
-      await sendChat(prompt);
-    });
-  }
 }
 
 function initFloatingChat() {
   const btn = $("#floatChatBtn");
   const box = $("#floatChatBox");
-  const close = $("#floatChatClose");
-  const msgs = $("#floatChatMessages");
-  const input = $("#floatChatInput");
-  const sendBtn = $("#floatChatSend");
-  const sug = $$("#floatChatBox [data-float-prompt]");
-
-  if (!btn || !box || !msgs || !input || !sendBtn) return;
-
-  const open = () => {
-    box.classList.remove("hidden");
-    box.classList.add("animate-fadeIn");
-    input.focus();
-  };
-  const hide = () => {
-    box.classList.add("hidden");
-  };
-
-  btn.addEventListener("click", () => {
-    if (box.classList.contains("hidden")) open();
-    else hide();
-  });
-  close?.addEventListener("click", hide);
-
-  // Seed greeting once
-  if (!msgs.dataset.seeded) {
-    msgs.dataset.seeded = "1";
-    appendMessageToLog(msgs, {
-      role: "assistant",
-      html: `
-        <div class="font-semibold">Hi 👋 I'm SwasthAI Assistant.</div>
-        <div class="mt-2 text-white/80">I can help you with:</div>
-        <div class="mt-2 text-white/80">• Find doctors 🏥<br>• Blood donors 🩸<br>• Government schemes 📄<br>• Health questions 💊</div>
-        <div class="mt-3 text-white/80">What do you need today?</div>
-        <div class="mt-3 flex flex-wrap gap-2">
-          <button type="button" class="chip" data-quick="Find doctor">Find Doctor</button>
-          <button type="button" class="chip" data-quick="Need blood">Need Blood</button>
-          <button type="button" class="chip" data-quick="Government schemes">Schemes</button>
-        </div>
-      `,
-    });
-  }
-
-  // Auto open + greeting on site load
-  if (!window.__floatChatAutoOpened) {
-    window.__floatChatAutoOpened = true;
-    setTimeout(() => {
-      open();
-    }, 1500);
-  }
-
-  const doSend = async () => {
-    const msg = (input.value || "").trim();
-    if (!msg) return;
-    input.value = "";
-    await sendChat(msg, null, { logEl: msgs, playSound: true });
-  };
-
-  sendBtn.addEventListener("click", doSend);
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      doSend();
-    }
-  });
-
-  for (const b of sug) {
-    b.addEventListener("click", async () => {
-      const p = b.getAttribute("data-float-prompt");
-      if (!p) return;
-      await sendChat(p, null, { logEl: msgs, playSound: true });
-    });
-  }
-
-  // Smart suggestion buttons inside greeting bubble
-  msgs.addEventListener("click", async (e) => {
-    const t = e.target?.getAttribute?.("data-quick");
-    if (!t) return;
-    await sendChat(t, null, { logEl: msgs, playSound: true });
+  if (!btn || !box) return;
+  btn.addEventListener("click", () => box.classList.toggle("hidden"));
+  $("#floatChatSend")?.addEventListener("click", async () => {
+    const input = $("#floatChatInput");
+    const msg = input.value.trim();
+    if (msg) { input.value = ""; await sendChat(msg, null, { logEl: $("#floatChatMessages") }); }
   });
 }
 
 function initReveal() {
-  const items = $$(".reveal");
-  if (!items.length) return;
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const ent of entries) {
-        if (ent.isIntersecting) {
-          ent.target.classList.add("in");
-          io.unobserve(ent.target);
-        }
-      }
-    },
-    { threshold: 0.12 }
-  );
-  items.forEach((el) => io.observe(el));
+  const io = new IntersectionObserver((es) => {
+    es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+  });
+  $$(".reveal").forEach(el => io.observe(el));
 }
 
 function initMenu() {
-  const btn = $("#menuBtn");
-  const closeBtn = $("#closeMenuBtn");
-  const menu = $("#mobileMenu");
-  if (!btn || !menu) return;
-
-  const open = () => {
-    menu.classList.remove("hidden");
-    menu.querySelector(".rounded-2xl")?.classList.add("animate-pop");
-  };
-  const close = () => {
-    menu.classList.add("hidden");
-  };
-
-  btn.addEventListener("click", open);
-  closeBtn?.addEventListener("click", close);
-
-  $$("#mobileMenu a").forEach((a) => a.addEventListener("click", close));
+  $("#menuBtn")?.addEventListener("click", () => $("#mobileMenu")?.classList.remove("hidden"));
+  $("#closeMenuBtn")?.addEventListener("click", () => $("#mobileMenu")?.classList.add("hidden"));
 }
 
 function initFinder() {
@@ -715,11 +374,10 @@ function initFinder() {
             ${dist}
           </div>
         </div>
-        ${
-          mapLink
-            ? `<a class="mt-2 inline-flex text-xs text-skyx-200 hover:text-skyx-50 transition relative z-10" href="${mapLink}" target="_blank" rel="noreferrer">Open in Maps ↗</a>`
-            : ""
-        }
+        ${mapLink
+        ? `<a class="mt-2 inline-flex text-xs text-skyx-200 hover:text-skyx-50 transition relative z-10" href="${mapLink}" target="_blank" rel="noreferrer">Open in Maps ↗</a>`
+        : ""
+      }
       </div>
     `;
   }
@@ -739,7 +397,7 @@ function initFinder() {
       card.addEventListener('click', () => {
         cards.forEach(c => c.className = c.className.replace('border-mint-500/50 bg-mint-500/10', 'border-white/10 bg-white/5'));
         card.className = card.className.replace('border-white/10 bg-white/5', 'border-mint-500/50 bg-mint-500/10');
-        
+
         const lat = card.getAttribute('data-lat');
         const lng = card.getAttribute('data-lng');
         const name = card.getAttribute('data-name');
@@ -749,15 +407,15 @@ function initFinder() {
 
         // Show detailed popup modal
         showHospitalModal({
-            name: name,
-            addr: card.getAttribute('data-addr'),
-            lat: lat,
-            lng: lng,
-            rating: card.getAttribute('data-rating'),
-            users: card.getAttribute('data-users'),
-            open: card.getAttribute('data-open'),
-            photo: card.getAttribute('data-photo'),
-            link: card.getAttribute('data-link')
+          name: name,
+          addr: card.getAttribute('data-addr'),
+          lat: lat,
+          lng: lng,
+          rating: card.getAttribute('data-rating'),
+          users: card.getAttribute('data-users'),
+          open: card.getAttribute('data-open'),
+          photo: card.getAttribute('data-photo'),
+          link: card.getAttribute('data-link')
         });
       });
     });
@@ -858,8 +516,8 @@ function initFinder() {
       setApiMode("Fallback");
       hospitalsList.innerHTML = `
         <a class="inline-flex text-sm text-skyx-200 hover:text-skyx-50 transition" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          `${searchString}${q}`
-        )}" target="_blank" rel="noreferrer">Search “${escapeHtml(searchString)}${escapeHtml(q)}” ↗</a>
+        `${searchString}${q}`
+      )}" target="_blank" rel="noreferrer">Search “${escapeHtml(searchString)}${escapeHtml(q)}” ↗</a>
       `;
       mapFrame.src = `https://www.google.com/maps?q=${encodeURIComponent(`${searchString}${q}`)}&output=embed`;
       openMapsBtn.disabled = false;
@@ -904,48 +562,15 @@ function waLink(phone, text) {
 }
 
 function doctorCard(d) {
-  const modes = new Set(d.mode || []);
-  const wa = modes.has("WhatsApp")
-    ? `<a class="btn-primary w-full justify-center" href="${waLink(d.phone, `Hello ${d.name}, I need help.`)}" target="_blank" rel="noreferrer">WhatsApp</a>`
-    : "";
-  const call = `<a class="btn-ghost w-full justify-center" href="${telLink(d.phone)}">Call</a>`;
-
-  return `
-    <div class="mini-card">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <div class="font-semibold tracking-tight">${escapeHtml(d.name)}</div>
-          <div class="mt-0.5 text-sm text-white/70">${escapeHtml(d.specialty)}</div>
-        </div>
-        <span class="badge">Available</span>
-      </div>
-      <div class="mt-3 text-xs text-white/55">${escapeHtml(d.availability || "")}</div>
-      <div class="mt-4 grid grid-cols-2 gap-2">
-        ${call}
-        ${wa || `<div class="btn-ghost w-full justify-center opacity-60 cursor-not-allowed" title="WhatsApp not available">WhatsApp</div>`}
-      </div>
-      <div class="mt-3 text-xs text-white/55">${escapeHtml(d.phone || "")}</div>
-    </div>
-  `;
+  return `<div class="mini-card"><div class="flex justify-between"><div><div class="font-bold">${escapeHtml(d.name)}</div><div class="text-xs text-white/60">${escapeHtml(d.specialty)}</div></div><span class="badge">Active</span></div><div class="mt-4 flex gap-2"><a class="btn-primary flex-1 justify-center text-xs" href="tel:${d.phone}">Call</a></div></div>`;
 }
 
 function schemeCard(s) {
-  return `
-    <div class="mini-card">
-      <div class="font-semibold tracking-tight">${escapeHtml(s.title)}</div>
-      <div class="mt-2 text-sm text-white/70">${escapeHtml(s.summary)}</div>
-      <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
-        <div class="text-xs text-white/60 uppercase tracking-wide">How to use</div>
-        <div class="mt-1 text-sm text-white/75">${escapeHtml(s.how_to_use)}</div>
-      </div>
-    </div>
-  `;
+  return `<div class="mini-card"><div class="font-bold">${escapeHtml(s.title)}</div><div class="mt-2 text-xs text-white/70">${escapeHtml(s.summary)}</div></div>`;
 }
 
 async function loadDoctors() {
-  const grid = $("#doctorsGrid");
-  if (!grid) return;
-  grid.innerHTML = `<div class="text-sm text-white/70">Loading…</div>`;
+  const grid = $("#doctorsGrid"); if (!grid) return;
   try {
     const res = await fetch("/api/doctors");
     const data = await res.json();
@@ -957,9 +582,7 @@ async function loadDoctors() {
 }
 
 async function loadSchemes() {
-  const grid = $("#schemesGrid");
-  if (!grid) return;
-  grid.innerHTML = `<div class="text-sm text-white/70">Loading…</div>`;
+  const grid = $("#schemesGrid"); if (!grid) return;
   try {
     const res = await fetch("/api/schemes");
     const data = await res.json();
@@ -971,52 +594,33 @@ async function loadSchemes() {
 }
 
 function initData() {
-  $("#refreshDoctorsBtn")?.addEventListener("click", loadDoctors);
-  $("#refreshSchemesBtn")?.addEventListener("click", loadSchemes);
   loadDoctors();
   loadSchemes();
 }
 
 function initProfile() {
-  const profileBtn = $("#profileBtn");
-  const profileSidebar = $("#profileSidebar");
-  const profileOverlay = $("#profileOverlay");
-  const closeProfileBtn = $("#closeProfileBtn");
-
-  if (!profileBtn || !profileSidebar || !profileOverlay || !closeProfileBtn) return;
-
-  const openProfile = () => {
-    profileSidebar.classList.remove("-translate-x-full");
-    profileOverlay.classList.remove("hidden");
-    // Force a reflow to trigger transition
-    profileOverlay.offsetHeight;
-    profileOverlay.classList.add("opacity-100");
-    document.body.style.overflow = "hidden";
-  };
-
-  const closeProfile = () => {
-    profileSidebar.classList.add("-translate-x-full");
-    profileOverlay.classList.remove("opacity-100");
-    document.body.style.overflow = "";
-    setTimeout(() => {
-      if (profileSidebar.classList.contains("-translate-x-full")) {
-        profileOverlay.classList.add("hidden");
-      }
-    }, 500);
-  };
-
-  profileBtn.addEventListener("click", openProfile);
-  closeProfileBtn.addEventListener("click", closeProfile);
-  profileOverlay.addEventListener("click", closeProfile);
+  const btn = $("#profileBtn"), sidebar = $("#profileSidebar"), overlay = $("#profileOverlay"), close = $("#closeProfileBtn");
+  if (!btn || !sidebar) return;
+  btn.addEventListener("click", () => {
+    sidebar.classList.remove("-translate-x-full");
+    overlay?.classList.remove("hidden");
+    switchSidebarTab('profile');
+    loadInbox();
+  });
+  close?.addEventListener("click", () => {
+    sidebar.classList.add("-translate-x-full");
+    overlay?.classList.add("hidden");
+  });
+  overlay?.addEventListener("click", () => {
+    sidebar.classList.add("-translate-x-full");
+    overlay?.classList.add("hidden");
+  });
 }
 
 function initBottomNav() {
-  const nav = $("#bottomNav");
-  if (!nav) return;
-  const path = window.location.pathname.replace(/\/+$/, "") || "/";
-  nav.querySelectorAll("a[data-path]").forEach((a) => {
-    const p = (a.getAttribute("data-path") || "").replace(/\/+$/, "") || "/";
-    if (p === path) a.classList.add("active");
+  const path = window.location.pathname;
+  $$("#bottomNav a").forEach(a => {
+    if (a.getAttribute("href") === path) a.classList.add("active");
   });
 }
 
@@ -1024,17 +628,27 @@ function donorCard(d) {
   const bg = d.blood_group ? `<span class="badge">${escapeHtml(d.blood_group)}</span>` : `<span class="badge">--</span>`;
   const area = d.area ? `<div class="text-xs text-white/55 mt-1">${escapeHtml(d.area)}</div>` : "";
   return `
-    <div class="mini-card">
-      <div class="flex items-start justify-between gap-3">
+    <div class="mini-card ${isSelf ? 'ring-1 ring-mint-500 border-mint-500/30 bg-mint-500/5' : ''}">
+      <div class="flex justify-between items-start">
         <div class="min-w-0">
-          <div class="font-semibold tracking-tight truncate">${escapeHtml(d.name || "Donor")}</div>
+          <div class="flex items-center gap-1.5">
+            <div class="font-bold truncate">${escapeHtml(d.name || "Donor")}</div>
+            ${isSelf ? '<span class="text-[8px] px-1 py-0.5 rounded bg-mint-500/20 text-mint-400 border border-mint-500/20 font-bold uppercase">You</span>' : ''}
+          </div>
           ${area}
         </div>
-        <div class="shrink-0">${bg}</div>
+        <span class="badge shrink-0">${escapeHtml(d.blood_group || "--")}</span>
       </div>
-      <button class="mt-4 btn-primary w-full justify-center" data-donor-id="${escapeHtml(d.id)}" data-donor-name="${escapeHtml(
-    d.name || "Donor"
-  )}" data-donor-bg="${escapeHtml(d.blood_group || "")}" data-donor-area="${escapeHtml(d.area || "")}">Message donor</button>
+      <button 
+        class="mt-4 ${isSelf ? 'btn-ghost opacity-50 cursor-default' : 'btn-primary'} w-full justify-center text-xs" 
+        ${isSelf ? 'disabled' : ''}
+        data-donor-id="${escapeHtml(d.id)}" 
+        data-donor-name="${escapeHtml(d.name || "Donor")}" 
+        data-donor-bg="${escapeHtml(d.blood_group || "")}" 
+        data-donor-area="${escapeHtml(d.area || "")}"
+      >
+        ${isSelf ? 'Public listing active' : 'Request Blood'}
+      </button>
     </div>
   `;
 }
@@ -1049,33 +663,32 @@ function openRequestModal({ id, name, blood_group, area }) {
   $("#requestDonorMeta").textContent = [blood_group, area].filter(Boolean).join(" • ");
   $("#requestReason").value = "";
   $("#requestMessage").value = "";
-  $("#requestSlip").value = "";
   $("#requestStatus").classList.add("hidden");
+  $("#requestStatus").textContent = "";
 
-  modal.classList.remove("hidden");
+  m.classList.remove("hidden");
   requestAnimationFrame(() => {
-    overlay.classList.add("opacity-100");
-    panel.classList.remove("opacity-0", "translate-y-2");
+    o.classList.add("opacity-100");
+    p.classList.remove("opacity-0", "translate-y-2");
   });
 }
 
 function closeRequestModal() {
-  const modal = $("#requestModal");
-  const overlay = $("#requestOverlay");
-  const panel = $("#requestPanel");
-  if (!modal || !overlay || !panel) return;
-  overlay.classList.remove("opacity-100");
-  panel.classList.add("opacity-0", "translate-y-2");
-  setTimeout(() => {
-    modal.classList.add("hidden");
-  }, 250);
+  const m = $("#requestModal");
+  const o = $("#requestOverlay");
+  const p = $("#requestPanel");
+  if (!m || !o || !p) return;
+
+  o.classList.remove("opacity-100");
+  p.classList.add("opacity-0", "translate-y-2");
+  setTimeout(() => m.classList.add("hidden"), 300);
 }
 
 async function loadDonors() {
   const grid = $("#donorsGrid");
   const count = $("#donorsCount");
   if (!grid) return;
-  grid.innerHTML = `<div class="text-sm text-white/70">Loading…</div>`;
+  grid.innerHTML = `<div class="text-xs text-white/40 text-center py-8">Searching donors...</div>`;
   const bg = $("#bloodGroupSelect")?.value || "";
   const area = ($("#donorAreaInput")?.value || "").trim();
 
@@ -1093,10 +706,10 @@ async function loadDonors() {
     grid.querySelectorAll("button[data-donor-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
         openRequestModal({
-          id: btn.getAttribute("data-donor-id"),
-          name: btn.getAttribute("data-donor-name"),
-          blood_group: btn.getAttribute("data-donor-bg"),
-          area: btn.getAttribute("data-donor-area"),
+          id: btn.dataset.donorId,
+          name: btn.dataset.donorName,
+          blood_group: btn.dataset.donorBg,
+          area: btn.dataset.donorArea
         });
       });
     });
@@ -1107,7 +720,7 @@ async function loadDonors() {
 
 async function submitDonorRequest(e) {
   e.preventDefault();
-  const form = $("#requestForm");
+  const form = e.target;
   const btn = $("#submitRequestBtn");
   const status = $("#requestStatus");
   if (!form || !btn || !status) return;
@@ -1119,7 +732,7 @@ async function submitDonorRequest(e) {
   status.textContent = "Submitting request…";
 
   try {
-    const res = await fetch("/api/donor_requests", { method: "POST", body: fd });
+    const res = await fetch("/api/donor_requests", { method: "POST", body: new FormData(form) });
     const data = await res.json();
     if (!res.ok) {
       status.textContent = data?.error || "Failed to submit request.";
@@ -1141,15 +754,15 @@ function requestRow(r) {
   const slip =
     r.has_slip && r.slip
       ? `<a class="text-xs text-skyx-200 hover:text-skyx-50 transition" href="/api/donor_requests/${escapeHtml(
-          r.id
-        )}/slip" target="_blank" rel="noreferrer">View slip ↗</a>`
+        r.id
+      )}/slip" target="_blank" rel="noreferrer">View slip ↗</a>`
       : `<div class="text-xs text-white/35">No slip</div>`;
   const badge =
     r.status === "pending"
       ? `<span class="badge">Pending</span>`
       : r.status === "accepted"
-      ? `<span class="badge">Accepted</span>`
-      : `<span class="badge">Rejected</span>`;
+        ? `<span class="badge">Accepted</span>`
+        : `<span class="badge">Rejected</span>`;
   const actions =
     r.status === "pending"
       ? `<div class="mt-3 grid grid-cols-2 gap-2">
@@ -1215,11 +828,8 @@ function initDonorsPage() {
     }
   });
 
-  $("#closeRequestBtn")?.addEventListener("click", closeRequestModal);
   $("#cancelRequestBtn")?.addEventListener("click", closeRequestModal);
-  $("#requestOverlay")?.addEventListener("click", closeRequestModal);
   $("#requestForm")?.addEventListener("submit", submitDonorRequest);
-
   $("#refreshRequestsBtn")?.addEventListener("click", loadDonorRequests);
 
   if ($("#donorsGrid")) loadDonors();
@@ -1259,10 +869,66 @@ async function updateAccountType(newType) {
         desc.textContent = "Seeking healthcare help";
       }
     } else {
-      console.error("Failed to update user type");
+      inboxBtn.classList.add("text-ink-950");
+      inboxBtn.classList.remove("text-white/50", "hover:text-white");
+      profileBtn.classList.remove("text-ink-950");
+      profileBtn.classList.add("text-white/50", "hover:text-white");
     }
   } catch (err) {
     console.error("Error updating user type:", err);
+  }
+}
+
+function switchSidebarTab(tab) {
+  const profileTab = $("#profileTabBtn");
+  const inboxTab = $("#inboxTabBtn");
+  const slider = $("#sidebarTabSlider");
+  const profileView = $("#profileViewMode");
+  const inboxView = $("#inboxView");
+  const editMode = $("#profileEditMode");
+  const footer = $("#profileActionFooter");
+
+  if (!slider || !profileTab || !inboxTab) return;
+
+  if (tab === 'profile') {
+    slider.style.transform = "translateX(0)";
+    profileTab.classList.add("text-ink-950");
+    profileTab.classList.remove("text-white/50");
+    inboxTab.classList.remove("text-ink-950");
+    inboxTab.classList.add("text-white/50");
+    
+    profileView.classList.remove("hidden");
+    inboxView.classList.add("hidden");
+    editMode.classList.add("hidden");
+    footer.classList.remove("hidden");
+    updateProfileFooter(false);
+  } else {
+    slider.style.transform = "translateX(100%)";
+    inboxTab.classList.add("text-ink-950");
+    inboxTab.classList.remove("text-white/50");
+    profileTab.classList.remove("text-ink-950");
+    profileTab.classList.add("text-white/50");
+    
+    profileView.classList.add("hidden");
+    inboxView.classList.remove("hidden");
+    editMode.classList.add("hidden");
+    footer.classList.remove("hidden");
+    updateProfileFooter(false);
+    loadInbox();
+  }
+}
+
+function updateProfileFooter(isEdit) {
+  const viewActions = $("#viewModeActions");
+  const editActions = $("#editModeActions");
+  if (!viewActions || !editActions) return;
+  
+  if (isEdit) {
+    viewActions.classList.add("hidden");
+    editActions.classList.remove("hidden");
+  } else {
+    viewActions.classList.remove("hidden");
+    editActions.classList.add("hidden");
   }
 }
 
@@ -1272,21 +938,25 @@ function toggleProfileEdit(isEdit) {
   if (isEdit) {
     viewMode.classList.add("hidden");
     editMode.classList.remove("hidden");
+    updateProfileFooter(true);
   } else {
     viewMode.classList.remove("hidden");
     editMode.classList.add("hidden");
+    updateProfileFooter(false);
   }
 }
 
 async function saveProfileDetails(event) {
   event.preventDefault();
   const form = event.target;
-  const btn = $("#saveProfileBtn");
+  const btn = $("#saveProfileBtnProxy") || $("#saveProfileBtn");
   const formData = new FormData(form);
   const data = Object.fromEntries(formData.entries());
 
-  btn.disabled = true;
-  btn.textContent = "Saving...";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+  }
 
   try {
     const res = await fetch("/api/update-profile", {
@@ -1294,38 +964,66 @@ async function saveProfileDetails(event) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
     });
-
+    
     if (res.ok) {
-      // Update the view fields
-      $("#view_name").textContent = data.name;
-      $("#view_blood_group").textContent = data.blood_group;
-      $("#view_age").textContent = data.age;
-      $("#view_contact_no").textContent = data.contact_no;
-      $("#view_area").textContent = data.area;
+      // Update the view mode labels immediately
+      $("#view_name").textContent = data.name || "Not provided";
+      $("#view_blood_group").textContent = data.blood_group || "--";
+      $("#view_age").textContent = data.age || "--";
+      $("#view_contact_no").textContent = data.contact_no || "Not provided";
+      $("#view_area").textContent = data.area || "Not provided";
       
       toggleProfileEdit(false);
     } else {
-      alert("Failed to save profile. Please try again.");
+      const d = await res.json();
+      alert(d.error || "Could not update profile");
     }
   } catch (err) {
     console.error("Error saving profile:", err);
     alert("An error occurred. Please try again.");
   } finally {
-    btn.disabled = false;
-    btn.textContent = "Save Changes";
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Save Changes";
+    }
+  }
+}
+
+async function loadInbox() {
+  const container = $("#inboxMessages");
+  if (!container) return;
+  
+  try {
+    const res = await fetch("/api/donor_requests");
+    const data = await res.json();
+    const items = data.requests || [];
+    
+    if (items.length === 0) {
+      container.innerHTML = `<div class="text-xs text-white/40 text-center py-8">No messages found.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map(r => {
+      const isDonor = r.is_for_me;
+      const otherPart = isDonor ? (r.requester_name || "User") : (r.donor?.name || "Donor");
+      const statusColor = r.status === 'accepted' ? 'text-mint-400' : r.status === 'rejected' ? 'text-rose-400' : 'text-skyx-400';
+      
+      return `
+        <div class="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+          <div class="flex justify-between items-start">
+            <div class="text-[10px] text-white/50 uppercase font-bold">${isDonor ? 'Requested By' : 'Request Sent To'}</div>
+            <div class="text-[10px] ${statusColor} font-bold uppercase">${r.status}</div>
+          </div>
+          <div class="text-sm font-medium text-white/90">${escapeHtml(otherPart)}</div>
+          <div class="text-[10px] text-white/40">${new Date(r.created_at).toLocaleDateString()}</div>
+        </div>
+      `;
+    }).join("");
+  } catch (err) {
+    container.innerHTML = `<div class="text-xs text-rose-400 text-center py-8">Failed to load inbox.</div>`;
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  initSiteLanguage();
-  initMenu();
-  initReveal();
-  initChat();
-  initFloatingChat();
-  initFinder();
-  initData();
-  initProfile();
-  initBottomNav();
-  initDonorsPage();
+  initSiteLanguage(); initMenu(); initReveal(); initChat(); initFloatingChat(); initFinder(); initData(); initProfile(); initBottomNav(); initDonorsPage();
 });
-

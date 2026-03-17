@@ -308,77 +308,85 @@
     <!-- Profile Sidebar -->
     <div id="profileSidebar" class="fixed inset-y-0 left-0 z-[100] w-full sm:w-1/4 min-w-[300px] bg-ink-950/95 backdrop-blur-2xl border-r border-white/10 shadow-2xl transition-transform duration-500 -translate-x-full">
       <div class="h-full flex flex-col p-6">
-        <div class="flex items-center justify-between mb-8">
-          <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-mint-500/10 border border-mint-500/20 flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="text-mint-500">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-                <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"></circle>
-              </svg>
-            </div>
-            <h2 class="text-lg font-bold">Your Profile</h2>
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex p-1 rounded-xl bg-white/5 border border-white/10 w-full relative">
+            <div id="sidebarTabSlider" class="absolute inset-y-1 left-1 w-[calc(50%-4px)] bg-mint-500 rounded-lg shadow-lg transition-transform duration-300"></div>
+            <button onclick="switchSidebarTab('profile')" class="flex-1 py-1.5 text-xs font-bold z-10 transition duration-300 text-ink-950" id="profileTabBtn">Profile</button>
+            <button onclick="switchSidebarTab('inbox')" class="flex-1 py-1.5 text-xs font-bold z-10 transition duration-300 text-white/50 hover:text-white" id="inboxTabBtn">Inbox</button>
           </div>
-          <button id="closeProfileBtn" class="h-8 w-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition">
+          <button id="closeProfileBtn" class="h-8 w-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition ml-4">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
-        <div class="flex-1 overflow-auto space-y-6" id="profileViewMode">
-          <div class="space-y-1">
-            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Full Name</div>
-            <div class="text-white/90 font-medium" id="view_name">{{ current_user.name or 'Not provided' }}</div>
-          </div>
-          <div class="space-y-1">
-            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Gmail</div>
-            <div class="text-white/90 font-medium text-xs break-all">{{ current_user.email }}</div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
+        <!-- Scrollable content -->
+        <div class="flex-1 overflow-auto">
+          <!-- Profile View -->
+          <div class="space-y-6" id="profileViewMode">
             <div class="space-y-1">
-              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Blood Group</div>
-              <div class="text-white/90 font-medium" id="view_blood_group">{{ current_user.blood_group or '--' }}</div>
+              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Full Name</div>
+              <div class="text-white/90 font-medium" id="view_name">{{ current_user.name or 'Not provided' }}</div>
             </div>
             <div class="space-y-1">
-              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Age</div>
-              <div class="text-white/90 font-medium" id="view_age">{{ current_user.age or '--' }}</div>
+              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Gmail</div>
+              <div class="text-white/90 font-medium text-xs break-all">{{ current_user.email }}</div>
             </div>
-          </div>
-          <div class="space-y-1">
-            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Contact Number</div>
-            <div class="text-white/90 font-medium" id="view_contact_no">{{ current_user.contact_no or 'Not provided' }}</div>
-          </div>
-          <div class="space-y-1">
-            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Area / Location</div>
-            <div class="text-white/90 font-medium leading-relaxed text-sm" id="view_area">{{ current_user.area or 'Not provided' }}</div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Blood Group</div>
+                <div class="text-white/90 font-medium" id="view_blood_group">{{ current_user.blood_group or '--' }}</div>
+              </div>
+              <div class="space-y-1">
+                <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Age</div>
+                <div class="text-white/90 font-medium" id="view_age">{{ current_user.age or '--' }}</div>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Contact Number</div>
+              <div class="text-white/90 font-medium" id="view_contact_no">{{ current_user.contact_no or 'Not provided' }}</div>
+            </div>
+            <div class="space-y-1">
+              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Area / Location</div>
+              <div class="text-white/90 font-medium leading-relaxed text-sm" id="view_area">{{ current_user.area or 'Not provided' }}</div>
+            </div>
+
+            <div class="pt-2">
+              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest mb-3">Account Type</div>
+              <div class="flex p-1 rounded-xl bg-white/5 border border-white/10 relative">
+                <div id="typeSlider" class="absolute inset-y-1 left-1 w-[calc(50%-4px)] bg-mint-500 rounded-lg shadow-lg transition-transform duration-300 {{ 'translate-x-full' if current_user.user_type == 'donor' else '' }}"></div>
+                <button 
+                  onclick="updateAccountType('user')" 
+                  class="flex-1 py-1.5 text-xs font-bold z-10 transition duration-300 {{ 'text-ink-950' if current_user.user_type == 'user' else 'text-white/50 hover:text-white' }}"
+                  id="userTypeBtn"
+                >
+                  User
+                </button>
+                <button 
+                  onclick="updateAccountType('donor')" 
+                  class="flex-1 py-1.5 text-xs font-bold z-10 transition duration-300 {{ 'text-ink-950' if current_user.user_type == 'donor' else 'text-white/50 hover:text-white' }}"
+                  id="donorTypeBtn"
+                >
+                  Donor
+                </button>
+              </div>
+              <p id="typeDesc" class="mt-2 text-[10px] text-white/30 text-center italic">
+                {{ 'Helping others with aid' if current_user.user_type == 'donor' else 'Seeking healthcare help' }}
+              </p>
+            </div>
+            <!-- Edit Button moved down -->
           </div>
 
-          <div class="pt-2">
-            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest mb-3">Account Type</div>
-            <div class="flex p-1 rounded-xl bg-white/5 border border-white/10 relative">
-              <div id="typeSlider" class="absolute inset-y-1 left-1 w-[calc(50%-4px)] bg-mint-500 rounded-lg shadow-lg transition-transform duration-300 {{ 'translate-x-full' if current_user.user_type == 'donor' else '' }}"></div>
-              <button 
-                onclick="updateAccountType('user')" 
-                class="flex-1 py-1.5 text-xs font-bold z-10 transition duration-300 {{ 'text-ink-950' if current_user.user_type == 'user' else 'text-white/50 hover:text-white' }}"
-                id="userTypeBtn"
-              >
-                User
-              </button>
-              <button 
-                onclick="updateAccountType('donor')" 
-                class="flex-1 py-1.5 text-xs font-bold z-10 transition duration-300 {{ 'text-ink-950' if current_user.user_type == 'donor' else 'text-white/50 hover:text-white' }}"
-                id="donorTypeBtn"
-              >
-                Donor
-              </button>
+          <!-- Inbox View (Hidden by default) -->
+          <div class="hidden space-y-4" id="inboxView">
+            <div class="flex items-center justify-between">
+              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Recent Messages</div>
+              <button onclick="loadInbox()" class="text-[10px] text-mint-500 hover:underline">Refresh</button>
             </div>
-            <p id="typeDesc" class="mt-2 text-[10px] text-white/30 text-center italic">
-              {{ 'Helping others with aid' if current_user.user_type == 'donor' else 'Seeking healthcare help' }}
-            </p>
+            <div id="inboxMessages" class="space-y-3">
+              <!-- Messages load here -->
+              <div class="text-xs text-white/40 text-center py-8">Loading inbox...</div>
+            </div>
           </div>
-
-          <button onclick="toggleProfileEdit(true)" class="btn-ghost w-full justify-center text-xs mt-4">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit Personal Details
-          </button>
         </div>
 
         <!-- Edit Mode (Hidden by default) -->
@@ -407,20 +415,55 @@
           </div>
           <div class="space-y-1">
             <label class="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Area / Location</label>
-            <textarea name="area" class="input py-2 text-sm min-h-[80px]" required>{{ current_user.area or '' }}</textarea>
-          </div>
-
-          <div class="flex gap-2 pt-4">
-            <button type="button" onclick="toggleProfileEdit(false)" class="btn-ghost flex-1 justify-center text-xs">Cancel</button>
-            <button type="submit" id="saveProfileBtn" class="btn-primary flex-1 justify-center text-xs">Save Changes</button>
+            <input type="text" name="area" list="locationsList" class="input py-2 text-sm" value="{{ current_user.area or '' }}" required placeholder="e.g. Bengaluru" />
           </div>
         </form>
 
-        <div class="mt-8 pt-6 border-t border-white/10">
-          <a href="{{ url_for('logout') }}" class="btn-ghost w-full justify-center text-xs">Sign Out Account</a>
+        <div id="profileActionFooter" class="mt-auto pt-4 border-t border-white/10 bg-ink-950/20 backdrop-blur-md">
+           <div id="viewModeActions">
+             <button onclick="toggleProfileEdit(true)" class="btn-ghost w-full justify-center text-xs">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+               Edit Personal Details
+             </button>
+           </div>
+           <div id="editModeActions" class="hidden flex gap-2">
+             <button onclick="toggleProfileEdit(false)" type="button" class="btn-ghost flex-1 justify-center text-xs">Cancel</button>
+             <button onclick="document.getElementById('profileEditMode').requestSubmit()" type="button" id="saveProfileBtnProxy" class="btn-primary flex-1 justify-center text-xs">Save Changes</button>
+           </div>
+           <a href="{{ url_for('logout') }}" class="btn-ghost w-full justify-center text-xs mt-3">Sign Out Account</a>
         </div>
       </div>
     </div>
+    
+    <datalist id="locationsList">
+      <option value="Bengaluru">
+      <option value="Udupi">
+      <option value="Mysuru">
+      <option value="Mangaluru">
+      <option value="Hubballi-Dharwad">
+      <option value="Belagavi">
+      <option value="Kalaburagi">
+      <option value="Shivamogga">
+      <option value="Davangere">
+      <option value="Ballari">
+      <option value="Vijayapura">
+      <option value="Tumakuru">
+      <option value="Chitradurga">
+      <option value="Bidar">
+      <option value="Hassan">
+      <option value="Mandya">
+      <option value="Chikkamagaluru">
+      <option value="Bagalkote">
+      <option value="Koppal">
+      <option value="Raichur">
+      <option value="Chamarajanagar">
+      <option value="Karwar">
+      <option value="Haveri">
+      <option value="Gadag">
+      <option value="Yadgir">
+      <option value="Chikkaballapur">
+      <option value="Ramanagara">
+    </datalist>
     <div id="profileOverlay" class="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-500"></div>
 
     <style>

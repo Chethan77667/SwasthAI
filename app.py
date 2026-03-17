@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import os
 import json
@@ -74,6 +74,8 @@ def _init_mongo() -> None:
     _users_col().create_index("email", unique=True)
     _donor_requests_col().create_index([("donor_id", 1), ("status", 1), ("created_at", -1)])
     _donor_requests_col().create_index([("requester_id", 1), ("created_at", -1)])
+    # Auto-delete handled requests after 24 hours
+    _donor_requests_col().create_index("expires_at", expireAfterSeconds=0)
     _mongo_initialized = True
 
 
@@ -193,7 +195,7 @@ def _get_gemini_response(message: str, image_data: bytes | None = None, mime_typ
     try:
         lang_instruction = f"CRITICAL: You MUST answer EVERYTHING (all fields in JSON) in {language}."
         
-        content = []
+        content: list = []
         if message:
             content.append(f"{SYSTEM_PROMPT}\n\n{lang_instruction}\n\nUser Message: {message}")
         else:
@@ -214,7 +216,7 @@ def _get_gemini_response(message: str, image_data: bytes | None = None, mime_typ
                 "type": "general",
                 "title": "API Connection Failed",
                 "description": "I couldn't connect to the AI service right now.",
-                "points": [error_str[:180]],
+                "points": [str(error_str)[:180]],
                 "action": "Please try again in a moment (and verify your GEMINI_API_KEY).",
                 "warning": "This is a technical message, not medical advice."
             }
@@ -623,20 +625,28 @@ def create_donor_request():
     donor_id = (request.form.get("donor_id") or "").strip()
     reason = (request.form.get("reason") or "").strip()
     message = (request.form.get("message") or "").strip()
+    
+    # New fields for requester verification
+    requester_name = (request.form.get("requester_name") or "").strip()
+    requester_phone = (request.form.get("requester_phone") or "").strip()
+    requester_location = (request.form.get("requester_location") or "").strip()
+    
     slip = request.files.get("slip")
 
     if not donor_id:
-        return jsonify({"error": "donor_id is required"}), 400
+        return jsonify({"error": "Donor ID is required"}), 400
     if not reason:
-        return jsonify({"error": "reason is required"}), 400
+        return jsonify({"error": "Reason is required"}), 400
+    if not requester_name or not requester_phone or not requester_location:
+        return jsonify({"error": "Please provide your name, phone and location"}), 400
 
     try:
         donor_oid = ObjectId(donor_id)
     except Exception:
         return jsonify({"error": "invalid donor_id"}), 400
 
-    donor = _users_col().find_one({"_id": donor_oid})
-    if not donor or (donor.get("user_type") or "user") != "donor":
+    donor_doc = _users_col().find_one({"_id": donor_oid})
+    if not donor_doc or (donor_doc.get("user_type") or "user") != "donor":
         return jsonify({"error": "donor not found"}), 404
 
     slip_file_id = None
@@ -657,6 +667,9 @@ def create_donor_request():
     doc = {
         "donor_id": donor_oid,
         "requester_id": ObjectId(current_user.id),
+        "requester_name": requester_name,
+        "requester_phone": requester_phone,
+        "requester_location": requester_location,
         "reason": reason,
         "message": message,
         "slip_file_id": slip_file_id,
@@ -666,40 +679,99 @@ def create_donor_request():
         "updated_at": datetime.utcnow(),
     }
     rid = _donor_requests_col().insert_one(doc).inserted_id
+
+    # Send Email to Donor with all details
+    try:
+        donor_email = donor_doc.get("email")
+        if donor_email and app.config.get("MAIL_USERNAME"):
+            msg = Message("SwasthAI - New Blood Request", recipients=[donor_email])
+            msg.body = (
+                f"Hello,\n\n"
+                f"You have received a new blood request from {requester_name}.\n\n"
+                f"Details:\n"
+                f"- Name: {requester_name}\n"
+                f"- Location: {requester_location}\n"
+                f"- Reason: {reason}\n"
+            )
+            if message:
+                msg.body += f"- Additional Message: {message}\n"
+            
+            msg.body += "\nNote: For privacy, contact numbers are only shared after you Accept this request in your SwasthAI profile.\n\nThank you,\nSwasthAI Team"
+            
+            # Attach slip if it exists
+            if slip and slip.filename:
+                # Need to seek back to start since it was already read for GridFS
+                slip.seek(0)
+                msg.attach(
+                    slip.filename,
+                    slip.content_type,
+                    slip.read()
+                )
+            
+            mail.send(msg)
+    except Exception as e:
+        print(f"Failed to send donor request email: {e}")
+
     return jsonify({"success": True, "request_id": str(rid)})
 
 
 @app.get("/api/donor_requests")
 @login_required
 def list_donor_requests():
-    if (current_user.user_type or "user") == "donor":
-        q = {"donor_id": ObjectId(current_user.id)}
-    else:
-        q = {"requester_id": ObjectId(current_user.id)}
+    # User can be donor or requester
+    q = {"$or": [
+        {"donor_id": ObjectId(current_user.id)},
+        {"requester_id": ObjectId(current_user.id)}
+    ]}
 
     items = list(_donor_requests_col().find(q).sort("created_at", -1).limit(100))
     user_ids = set()
-    for it in items:
-        user_ids.add(it["donor_id"])
-        user_ids.add(it["requester_id"])
+    for item in items:
+        # Use set.update to avoid confusion and discard None values later
+        if item.get("donor_id"):
+            user_ids.add(item.get("donor_id"))
+        if item.get("requester_id"):
+            user_ids.add(item.get("requester_id"))
+    
     users = {u["_id"]: u for u in _users_col().find({"_id": {"$in": list(user_ids)}}, {"password": 0})}
-
+    
     out = []
-    for it in items:
-        donor = users.get(it["donor_id"]) or {}
-        requester = users.get(it["requester_id"]) or {}
+    for item in items:
+        donor_id = item.get("donor_id")
+        req_id = item.get("requester_id")
+        donor_doc = users.get(donor_id) or {}
+        requester_doc = users.get(req_id) or {}
+        
+        is_accepted = (item.get("status") == "accepted")
+        
+        # Public views (don't include sensitive info unless accepted)
+        donor_view = _public_user_view(donor_doc) if donor_doc else None
+        requester_view = _public_user_view(requester_doc) if requester_doc else None
+        
+        # Add numbers if accepted
+        if is_accepted:
+            if donor_view: donor_view["contact_no"] = donor_doc.get("contact_no")
+            if requester_view: requester_view["contact_no"] = item.get("requester_phone") # Use phone from request doc
+        elif item.get("status") == "rejected":
+             # We can add a rejection flag if needed, but status is enough
+             pass
+
         out.append(
             {
-                "id": str(it["_id"]),
-                "status": it.get("status"),
-                "reason": it.get("reason"),
-                "message": it.get("message"),
-                "created_at": it.get("created_at").isoformat() + "Z",
-                "updated_at": it.get("updated_at").isoformat() + "Z",
-                "donor": _public_user_view(donor) if donor else None,
-                "requester": _public_user_view(requester) if requester else None,
-                "slip": it.get("slip_meta"),
-                "has_slip": bool(it.get("slip_file_id")),
+                "id": str(item["_id"]),
+                "status": item.get("status"),
+                "reason": item.get("reason"),
+                "message": item.get("message"),
+                "requester_name": item.get("requester_name"),
+                "requester_location": item.get("requester_location"),
+                "created_at": item.get("created_at").isoformat() + "Z",
+                "updated_at": item.get("updated_at").isoformat() + "Z",
+                "donor": donor_view,
+                "requester": requester_view,
+                "slip": item.get("slip_meta"),
+                "has_slip": bool(item.get("slip_file_id")),
+                "is_for_me": (item["donor_id"] == ObjectId(current_user.id)),
+                "feedback": item.get("feedback")
             }
         )
 
@@ -709,8 +781,6 @@ def list_donor_requests():
 @app.post("/api/donor_requests/<rid>/status")
 @login_required
 def update_donor_request_status(rid: str):
-    if (current_user.user_type or "user") != "donor":
-        return jsonify({"error": "only donors can update status"}), 403
     data = request.get_json(silent=True) or {}
     status = (data.get("status") or "").strip().lower()
     if status not in ("accepted", "rejected"):
@@ -720,13 +790,85 @@ def update_donor_request_status(rid: str):
     except Exception:
         return jsonify({"error": "invalid request id"}), 400
 
+    # Ensure current user is the donor for this request
+    expires_at = datetime.utcnow() + timedelta(hours=24)
     res = _donor_requests_col().update_one(
         {"_id": oid, "donor_id": ObjectId(current_user.id), "status": "pending"},
-        {"$set": {"status": status, "updated_at": datetime.utcnow()}},
+        {"$set": {
+            "status": status, 
+            "updated_at": datetime.utcnow(),
+            "expires_at": expires_at
+        }},
     )
+    
     if res.matched_count == 0:
         return jsonify({"error": "request not found (or already handled)"}), 404
+    
+    # Optional: Send email notification to requester
+    try:
+        request_doc = _donor_requests_col().find_one({"_id": oid})
+        requester_doc = _users_col().find_one({"_id": request_doc["requester_id"]})
+        if requester_doc and requester_doc.get("email") and app.config.get("MAIL_USERNAME"):
+            msg = Message(f"SwasthAI - Blood Request {status.capitalize()}", recipients=[requester_doc.get("email")])
+            msg.body = f"Hello,\n\nYour blood request to {current_user.name} has been {status}.\n\n"
+            
+            if status == "accepted":
+                msg.body += (
+                    f"Donor Contact Information:\n"
+                    f"- Name: {current_user.name}\n"
+                    f"- Phone: {current_user._doc.get('contact_no') or 'Not provided'}\n\n"
+                    f"You can also see these details in your SwasthAI inbox.\n"
+                )
+                
+                # Also send a mutual confirmation to the donor
+                try:
+                    donor_msg = Message("SwasthAI - Request Accepted Successfully", recipients=[current_user.email])
+                    donor_msg.body = (
+                        f"Hello {current_user.name},\n\n"
+                        f"You have accepted the blood request from {request_doc.get('requester_name')}.\n\n"
+                        f"Requester Contact Information:\n"
+                        f"- Name: {request_doc.get('requester_name')}\n"
+                        f"- Phone: {request_doc.get('requester_phone')}\n\n"
+                        f"Thank you for your life-saving contribution!\n\nSwasthAI Team"
+                    )
+                    mail.send(donor_msg)
+                except Exception as de:
+                    print(f"Failed to send donor confirmation: {de}")
+            else:
+                msg.body += f"We are sorry, but the donor has rejected your request at this time.\n"
+                
+            msg.body += "\nThank you,\nSwasthAI Team"
+            mail.send(msg)
+    except Exception as e:
+        print(f"Failed to send requester status email: {e}")
+
     return jsonify({"success": True, "status": status})
+
+
+@app.post("/api/donor_requests/<rid>/feedback")
+@login_required
+def submit_request_feedback(rid: str):
+    data = request.get_json(silent=True) or {}
+    feedback = (data.get("feedback") or "").strip().lower()
+    if feedback not in ("like", "dislike"):
+        return jsonify({"error": "feedback must be like or dislike"}), 400
+    
+    try:
+        oid = ObjectId(rid)
+    except Exception:
+        return jsonify({"error": "invalid request id"}), 400
+        
+    # User must be the requester and the status must be accepted
+    res = _donor_requests_col().find_one_and_update(
+        {"_id": oid, "requester_id": ObjectId(current_user.id), "status": "accepted"},
+        {"$set": {"feedback": feedback}},
+        return_document=True
+    )
+    
+    if not res:
+        return jsonify({"error": "Could not submit feedback (must be accepted request)"}), 404
+        
+    return jsonify({"success": True, "feedback": feedback})
 
 
 @app.get("/api/donor_requests/<rid>/slip")

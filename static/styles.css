@@ -260,6 +260,16 @@ html {
   background: rgba(255, 255, 255, 0.06);
 }
 
+select.input {
+  color: white !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+select.input option {
+  background-color: #0B1220;
+  color: white;
+}
+
 /* Language selectors: force readable black text */
 #siteLang,
 #languageSelect {
