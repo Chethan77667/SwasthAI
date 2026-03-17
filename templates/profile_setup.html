@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile Setup • SwasthAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: { 950: "#070A0E", 900: "#0B1220", 800: "#101B2E" },
+              mint: { 500: "#1EE6B6" },
+              skyx: { 500: "#2FB5FF" }
+            }
+          }
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="bg-ink-950 text-white antialiased flex items-center justify-center min-h-screen p-4 overflow-x-hidden">
+    <!-- Background -->
+    <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10">
+      <div class="absolute inset-0 bg-[radial-gradient(1200px_800px_at_50%_0%,rgba(30,230,182,.1),transparent_60%)]"></div>
+    </div>
+
+    <div class="w-full max-w-2xl card-xl reveal animate-pop my-12">
+      <div class="text-center mb-10">
+        <div class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 border border-white/15 mb-6 shadow-glow">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#pGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <defs><linearGradient id="pGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1EE6B6" /><stop offset="100%" style="stop-color:#2FB5FF" /></linearGradient></defs>
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <h1 class="text-3xl font-bold tracking-tight">Complete Your Profile</h1>
+        <p class="text-white/55 mt-2">To provide better health guidance, we need a few details.</p>
+      </div>
+
+      <form method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid gap-2 text-sm col-span-full opacity-60">
+          <label class="text-white/70 font-medium ml-1">Gmail Address</label>
+          <input type="text" class="input bg-white/5 cursor-not-allowed" value="{{ current_user.email }}" readonly />
+        </div>
+
+        <div class="grid gap-2 text-sm">
+          <label class="text-white/70 font-medium ml-1">Full Name</label>
+          <input type="text" name="name" class="input" placeholder="John Doe" required autofocus />
+        </div>
+
+        <div class="grid gap-2 text-sm">
+          <label class="text-white/70 font-medium ml-1">Age</label>
+          <input type="number" name="age" class="input" placeholder="25" min="1" max="120" required />
+        </div>
+
+        <div class="grid gap-2 text-sm">
+          <label class="text-white/70 font-medium ml-1">Blood Group</label>
+          <select name="blood_group" class="input select-icon" required>
+            <option value="" disabled selected>Select Blood Group</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+          </select>
+        </div>
+
+        <div class="grid gap-2 text-sm">
+          <label class="text-white/70 font-medium ml-1">Contact Number</label>
+          <input type="tel" name="contact_no" class="input" placeholder="+91 00000-00000" pattern="[+]?[0-9\s-]{10,}" required />
+        </div>
+
+        <div class="grid gap-2 text-sm col-span-full">
+          <label class="text-white/70 font-medium ml-1">Area / Address</label>
+          <input type="text" name="area" class="input" placeholder="City, State" required />
+        </div>
+
+        <div class="col-span-full mt-6">
+          <button type="submit" class="btn-primary w-full justify-center py-4">Save & Continue →</button>
+        </div>
+      </form>
+
+      <div class="mt-8 pt-6 border-t border-white/10 text-center">
+        <a href="{{ url_for('logout') }}" class="text-xs text-white/30 hover:text-white transition">Cancel & Logout</a>
+      </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+    <style>
+      .select-icon {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem;
+      }
+    </style>
+  </body>
+</html>

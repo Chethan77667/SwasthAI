@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verify OTP • SwasthAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: { 950: "#070A0E", 900: "#0B1220", 800: "#101B2E" },
+              mint: { 500: "#1EE6B6" },
+              skyx: { 500: "#2FB5FF" }
+            }
+          }
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="bg-ink-950 text-white antialiased flex items-center justify-center min-h-screen p-4">
+    <!-- Background -->
+    <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10">
+      <div class="absolute inset-0 bg-[radial-gradient(1200px_500px_at_50%_10%,rgba(47,181,255,.15),transparent_60%)]"></div>
+    </div>
+
+    <div class="w-full max-w-md card-xl reveal animate-pop">
+      <div class="text-center mb-8">
+        <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 border border-white/15 mb-4 shadow-glow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#otpGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <defs><linearGradient id="otpGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1EE6B6" /><stop offset="100%" style="stop-color:#2FB5FF" /></linearGradient></defs>
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight">Verify Email</h1>
+        <p class="text-white/55 text-sm mt-2">Enter the 6-digit code sent to your Gmail</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="mb-4 p-3 rounded-xl border {% if category == 'danger' %}border-rose-500/50 bg-rose-500/10 text-rose-200{% else %}border-mint-500/50 bg-mint-500/10 text-mint-200{% endif %} text-xs text-center">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" class="grid gap-6">
+        <div class="grid gap-2 text-sm text-center">
+          <input type="text" name="otp" class="input text-center text-3xl tracking-[1em] font-bold h-16" placeholder="000000" maxlength="6" pattern="\d{6}" required autofocus />
+        </div>
+        <button type="submit" class="btn-primary w-full justify-center py-3">Verify & Complete</button>
+      </form>
+
+      <div class="mt-8 pt-6 border-t border-white/10 text-center">
+        <p class="text-white/55 text-sm">
+          Didn't receive the code? 
+          <a href="{{ url_for('signup') }}" class="text-mint-500 hover:text-mint-300 font-medium transition">Try again</a>
+        </p>
+      </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
