@@ -18,11 +18,8 @@ from gridfs import GridFS
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
 
-# Load environment variables from .env or env
-if os.path.exists("env"):
-    load_dotenv("env")
-else:
-    load_dotenv()
+# Load environment variables from .env
+load_dotenv()
 
 
 app = Flask(__name__)
@@ -270,7 +267,7 @@ def chatbot_page():
 @app.get("/hospitals")
 @login_required
 def hospitals_page():
-    return render_template("hospitals.html", build_time=datetime.utcnow().isoformat() + "Z")
+    return render_template("hospitals.html", build_time=datetime.utcnow().isoformat() + "Z", gapi_key=_gmaps_key())
 
 
 @app.get("/doctors")
@@ -760,8 +757,11 @@ def download_donor_request_slip(rid: str):
 
 
 def _gmaps_key() -> str | None:
-    key = (os.getenv("GOOGLE_MAPS_API_KEY") or "").strip()
-    return key or None
+    for k in ["GOOGLE_MAPS_API_KEY", "GOOGLE_MAP_API_KEY"]:
+        val = os.getenv(k, "").strip()
+        if val and val != "your_google_maps_api_key_here":
+            return val
+    return None
 
 
 @app.get("/api/geocode")
@@ -803,28 +803,45 @@ def nearby_hospitals():
     lat = request.args.get("lat", type=float)
     lng = request.args.get("lng", type=float)
     radius = request.args.get("radius", default=6000, type=int)
+    keyword = request.args.get("keyword", "").strip()
+
     if lat is None or lng is None:
         return jsonify({"error": "lat and lng are required"}), 400
 
-    radius = max(500, min(int(radius), 20000))
+    base_radius = max(500, min(int(radius), 50000))
+    search_radii = [base_radius, 15000, 30000, 50000]
+    search_radii = sorted(list(set([r for r in search_radii if r >= base_radius])))
 
-    r = requests.get(
-        "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
-        params={
+    data = {}
+    for r in search_radii:
+        params = {
             "location": f"{lat},{lng}",
-            "radius": radius,
+            "radius": r,
             "type": "hospital",
             "key": key,
-        },
-        timeout=12,
-    )
-    data = r.json()
-    if data.get("status") not in ("OK", "ZERO_RESULTS"):
-        return jsonify({"error": "places search failed", "details": data.get("status")}), 400
+        }
+        if keyword:
+            params["keyword"] = keyword
+
+        r_out = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params=params,
+            timeout=12,
+        )
+        data = r_out.json()
+        if data.get("status") == "OK" and data.get("results"):
+            radius = r  # Update returned radius to the successful one
+            break
+        elif data.get("status") not in ("OK", "ZERO_RESULTS"):
+            return jsonify({"error": "places search failed", "details": data.get("status")}), 400
 
     results = []
     for it in data.get("results", [])[:12]:
         gloc = (it.get("geometry") or {}).get("location") or {}
+        photos = it.get("photos", [])
+        photo_ref = photos[0].get("photo_reference") if photos else None
+        photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference={photo_ref}&key={key}" if photo_ref else None
+
         results.append(
             {
                 "name": it.get("name"),
@@ -834,8 +851,38 @@ def nearby_hospitals():
                 "open_now": ((it.get("opening_hours") or {}).get("open_now")),
                 "location": {"lat": gloc.get("lat"), "lng": gloc.get("lng")},
                 "place_id": it.get("place_id"),
+                "photo_url": photo_url,
             }
         )
+
+    if results and key:
+        destinations = "|".join([f"place_id:{r['place_id']}" for r in results if r.get('place_id')])
+        if destinations:
+            try:
+                d_r = requests.get(
+                    "https://maps.googleapis.com/maps/api/distancematrix/json",
+                    params={
+                        "origins": f"{lat},{lng}",
+                        "destinations": destinations,
+                        "key": key
+                    },
+                    timeout=12
+                )
+                d_data = d_r.json()
+                if d_data.get("status") == "OK" and "rows" in d_data:
+                    elements = d_data["rows"][0]["elements"]
+                    for i, el in enumerate(elements):
+                        if i < len(results):
+                            if el.get("status") == "OK":
+                                results[i]["distance"] = el.get("distance", {})
+                                results[i]["duration"] = el.get("duration", {})
+                                results[i]["distance_value"] = el.get("distance", {}).get("value", 999999)
+                            else:
+                                results[i]["distance_value"] = 999999
+            except Exception as e:
+                print("Distance Matrix Error:", e)
+
+    results.sort(key=lambda x: x.get("distance_value", 999999))
 
     return jsonify({"center": {"lat": lat, "lng": lng}, "radius": radius, "results": results})
 

@@ -549,11 +549,43 @@ function initFinder() {
   const openMapsBtn = $("#openMapsBtn");
   const status = $("#locStatus");
   const mapFrame = $("#mapFrame");
+  const keywordInput = $("#keywordInput");
   const placeInput = $("#placeInput");
-  const placeSearchBtn = $("#placeSearchBtn");
   const hospitalsList = $("#hospitalsList");
   const apiBadge = $("#apiBadge");
-  if (!locBtn || !openMapsBtn || !status || !mapFrame || !placeInput || !placeSearchBtn || !hospitalsList || !apiBadge) return;
+  const showMapMobileBtn = $("#showMapMobileBtn");
+  const closeMapMobileBtn = $("#closeMapMobileBtn");
+  const mapWrapper = $("#mapWrapper");
+
+  // Modal elements
+  const hModal = $("#hospitalModal");
+  const hModalOverlay = $("#hospitalModalOverlay");
+  const closeHModalBtn = $("#closeHospitalModalBtn");
+
+  if (!locBtn || !status || !mapFrame || !placeInput || !hospitalsList) return;
+
+  // Initialize Autocomplete if Places library is loaded (retries if not ready yet)
+  function initMapsAutocomplete() {
+    if (window.google && google.maps && google.maps.places) {
+      const pAuto = new google.maps.places.Autocomplete(placeInput);
+      pAuto.addListener('place_changed', () => {
+        const place = pAuto.getPlace();
+        if (place.geometry) {
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          fetchHospitalsByCoords(lat, lng, place.formatted_address || place.name);
+        } else {
+          searchPlace();
+        }
+      });
+      if (keywordInput) {
+        new google.maps.places.Autocomplete(keywordInput, { types: ['establishment'] });
+      }
+    } else {
+      setTimeout(initMapsAutocomplete, 200);
+    }
+  }
+  initMapsAutocomplete();
 
   let coords = null;
 
@@ -564,74 +596,200 @@ function initFinder() {
 
   function setMapsUrl(lat, lng, q = "hospital near me") {
     const url = mapsSearchUrl(lat, lng, q);
-    openMapsBtn.disabled = false;
-    openMapsBtn.onclick = () => window.open(url, "_blank", "noopener,noreferrer");
+    if (openMapsBtn) {
+      openMapsBtn.href = url;
+      openMapsBtn.classList.remove("hidden");
+      openMapsBtn.classList.add("flex");
+    }
     mapFrame.src = `https://www.google.com/maps?q=${encodeURIComponent(`${q} near ${lat},${lng}`)}&output=embed`;
   }
 
   function setApiMode(mode) {
-    apiBadge.textContent = mode;
+    if (apiBadge) apiBadge.textContent = mode;
   }
 
-  function hospitalRow(h) {
+  function showHospitalModal(hMap) {
+    if (!hModal || !hModalOverlay) return;
+
+    $("#hospitalModalName").textContent = hMap.name;
+    $("#hospitalModalAddr").textContent = hMap.addr;
+
+    const rEl = $("#hospitalModalRating");
+    if (hMap.rating && hMap.rating !== "null" && hMap.rating !== "undefined") {
+      rEl.innerHTML = `⭐ ${hMap.rating} ${hMap.users && hMap.users !== "undefined" ? `• ${hMap.users}` : ''}`;
+      rEl.style.display = 'inline-flex';
+    } else {
+      rEl.style.display = 'none';
+    }
+
+    const oEl = $("#hospitalModalOpen");
+    if (hMap.open === 'true') {
+      oEl.textContent = 'Open now';
+      oEl.className = 'badge bg-mint-500/20 text-mint-400 border-mint-500/20';
+      oEl.style.display = 'inline-flex';
+    } else if (hMap.open === 'false') {
+      oEl.textContent = 'Closed';
+      oEl.className = 'badge bg-rose-500/20 text-rose-400 border-rose-500/20';
+      oEl.style.display = 'inline-flex';
+    } else {
+      oEl.style.display = 'none';
+    }
+
+    const imgEl = $("#hospitalModalImg");
+    const plEl = $("#hospitalModalImgPlaceholder");
+    if (hMap.photo && hMap.photo !== "undefined" && hMap.photo !== "null") {
+      imgEl.src = hMap.photo;
+      imgEl.classList.remove("hidden");
+      plEl.classList.add("hidden");
+    } else {
+      imgEl.src = "";
+      imgEl.classList.add("hidden");
+      plEl.classList.remove("hidden");
+    }
+
+    const mapsBtn = $("#hospitalModalMapsBtn");
+    if (hMap.link && hMap.link !== "null") {
+      mapsBtn.href = hMap.link;
+      mapsBtn.style.display = 'flex';
+    } else {
+      mapsBtn.style.display = 'none';
+    }
+
+    hModalOverlay.classList.remove("hidden");
+    hModal.classList.remove("hidden");
+    hModal.classList.add("flex");
+    setTimeout(() => {
+      hModalOverlay.classList.remove("opacity-0");
+      hModal.classList.remove("opacity-0", "scale-95");
+    }, 10);
+  }
+
+  function hideHospitalModal() {
+    if (!hModal || !hModalOverlay) return;
+    hModalOverlay.classList.add("opacity-0");
+    hModal.classList.add("opacity-0", "scale-95");
+    setTimeout(() => {
+      hModalOverlay.classList.add("hidden");
+      hModal.classList.add("hidden");
+      hModal.classList.remove("flex");
+    }, 300);
+  }
+
+  if (closeHModalBtn) closeHModalBtn.addEventListener("click", hideHospitalModal);
+  if (hModalOverlay) hModalOverlay.addEventListener("click", hideHospitalModal);
+
+  function hospitalRow(h, isSelected) {
     const rating =
       h.rating != null ? `<span class="badge">⭐ ${escapeHtml(h.rating)}${h.user_ratings_total ? ` • ${escapeHtml(h.user_ratings_total)}` : ""}</span>` : "";
     const open =
       h.open_now === true ? `<span class="badge">Open now</span>` : h.open_now === false ? `<span class="badge">Closed</span>` : "";
 
-    const addr = h.address ? `<div class="text-xs text-white/55 mt-0.5">${escapeHtml(h.address)}</div>` : "";
+    const addr = h.address ? `<div class="text-xs text-white/55 mt-0.5 whitespace-normal break-words">${escapeHtml(h.address)}</div>` : "";
+    const dist = h.distance?.text ? `<div class="badge bg-mint-500/10 text-mint-400 border-mint-500/20">🚗 ${h.duration?.text || "?"} (${h.distance.text})</div>` : "";
     const mapLink =
       h.location?.lat != null && h.location?.lng != null
         ? mapsSearchUrl(h.location.lat, h.location.lng, h.name || "hospital")
         : null;
 
+    const bgClass = isSelected ? 'border-mint-500/50 bg-mint-500/10' : 'border-white/10 bg-white/5';
+
     return `
-      <div class="rounded-2xl border border-white/10 bg-white/5 p-3">
+      <div class="rounded-2xl border ${bgClass} p-3 cursor-pointer hover:border-white/30 transition hospital-card overflow-hidden" 
+           data-lat="${h.location?.lat || ''}" 
+           data-lng="${h.location?.lng || ''}" 
+           data-name="${escapeHtml(h.name || 'hospital')}"
+           data-addr="${escapeHtml(h.address || '')}"
+           data-rating="${escapeHtml(h.rating)}"
+           data-users="${escapeHtml(h.user_ratings_total)}"
+           data-open="${h.open_now === true ? 'true' : h.open_now === false ? 'false' : ''}"
+           data-photo="${escapeHtml(h.photo_url || '')}"
+           data-link="${escapeHtml(mapLink || '')}">
         <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <div class="font-medium truncate">${escapeHtml(h.name || "Hospital")}</div>
+          <div class="min-w-0 flex-1 pointer-events-none">
+            <div class="font-medium truncate" title="${escapeHtml(h.name || "Hospital")}">${escapeHtml(h.name || "Hospital")}</div>
             ${addr}
           </div>
-          <div class="flex flex-col items-end gap-1 shrink-0">
+          <div class="flex flex-col items-end gap-1 shrink-0 pointer-events-none whitespace-nowrap">
             ${rating}
             ${open}
+            ${dist}
           </div>
         </div>
         ${
           mapLink
-            ? `<a class="mt-2 inline-flex text-xs text-skyx-200 hover:text-skyx-50 transition" href="${mapLink}" target="_blank" rel="noreferrer">Open in Maps ↗</a>`
+            ? `<a class="mt-2 inline-flex text-xs text-skyx-200 hover:text-skyx-50 transition relative z-10" href="${mapLink}" target="_blank" rel="noreferrer">Open in Maps ↗</a>`
             : ""
         }
       </div>
     `;
   }
 
-  function renderHospitals(items) {
+  function renderHospitals(items, forceMapFallbackLat, forceMapFallbackLng) {
     if (!items || !items.length) {
       hospitalsList.innerHTML = `<div class="text-white/55 text-sm">No hospitals found.</div>`;
+      if (forceMapFallbackLat != null && forceMapFallbackLng != null) {
+        setMapsUrl(forceMapFallbackLat, forceMapFallbackLng);
+      }
       return;
     }
-    hospitalsList.innerHTML = items.map(hospitalRow).join("");
+    hospitalsList.innerHTML = items.map((h, i) => hospitalRow(h, i === 0)).join("");
+
+    const cards = hospitalsList.querySelectorAll('.hospital-card');
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        cards.forEach(c => c.className = c.className.replace('border-mint-500/50 bg-mint-500/10', 'border-white/10 bg-white/5'));
+        card.className = card.className.replace('border-white/10 bg-white/5', 'border-mint-500/50 bg-mint-500/10');
+        
+        const lat = card.getAttribute('data-lat');
+        const lng = card.getAttribute('data-lng');
+        const name = card.getAttribute('data-name');
+        if (lat && lng) {
+          setMapsUrl(parseFloat(lat), parseFloat(lng), name);
+        }
+
+        // Show detailed popup modal
+        showHospitalModal({
+            name: name,
+            addr: card.getAttribute('data-addr'),
+            lat: lat,
+            lng: lng,
+            rating: card.getAttribute('data-rating'),
+            users: card.getAttribute('data-users'),
+            open: card.getAttribute('data-open'),
+            photo: card.getAttribute('data-photo'),
+            link: card.getAttribute('data-link')
+        });
+      });
+    });
+
+    const nearest = items[0];
+    if (nearest && nearest.location?.lat != null) {
+      setMapsUrl(nearest.location.lat, nearest.location.lng, nearest.name || "hospital");
+    } else if (forceMapFallbackLat != null && forceMapFallbackLng != null) {
+      setMapsUrl(forceMapFallbackLat, forceMapFallbackLng);
+    }
   }
 
   async function fetchHospitalsByCoords(lat, lng, label) {
     coords = { latitude: lat, longitude: lng };
     status.textContent = label || `Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}`;
-    setMapsUrl(lat, lng);
+    const keyword = (keywordInput?.value || "").trim();
 
     try {
-      const res = await fetch(`/api/nearby_hospitals?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&radius=6000`);
+      const u = new URLSearchParams({ lat, lng, radius: 6000 });
+      if (keyword) u.append("keyword", keyword);
+      const res = await fetch(`/api/nearby_hospitals?${u.toString()}`);
       const data = await res.json();
       if (res.ok) {
         setApiMode("Places API");
-        renderHospitals(data.results || []);
+        renderHospitals(data.results || [], lat, lng);
         return;
       }
       setApiMode("Fallback");
-      renderHospitals([]);
+      renderHospitals([], lat, lng);
     } catch {
       setApiMode("Fallback");
-      renderHospitals([]);
+      renderHospitals([], lat, lng);
     }
   }
 
@@ -660,9 +818,18 @@ function initFinder() {
     );
   });
 
-  openMapsBtn.addEventListener("click", () => {
-    if (!coords) return;
-    setMapsUrl(coords.latitude, coords.longitude);
+  showMapMobileBtn?.addEventListener("click", () => {
+    if (mapWrapper) {
+      mapWrapper.classList.remove("hidden");
+      mapWrapper.classList.add("flex");
+    }
+  });
+
+  closeMapMobileBtn?.addEventListener("click", () => {
+    if (mapWrapper) {
+      mapWrapper.classList.add("hidden");
+      mapWrapper.classList.remove("flex");
+    }
   });
 
   async function searchPlace() {
@@ -670,6 +837,8 @@ function initFinder() {
     if (!q) return;
     hospitalsList.innerHTML = `<div class="text-white/55 text-sm">Searching…</div>`;
     setApiMode("Geocoding");
+    const keyword = (keywordInput?.value || "").trim();
+    const searchString = keyword ? `${keyword} in ` : "hospital in ";
 
     // Try backend Geocoding API (requires GOOGLE_MAPS_API_KEY).
     try {
@@ -681,7 +850,7 @@ function initFinder() {
       const lat = data.location?.lat;
       const lng = data.location?.lng;
       if (lat == null || lng == null) throw new Error("invalid geocode");
-      setMapsUrl(lat, lng, "hospital");
+      setMapsUrl(lat, lng, keyword ? keyword : "hospital");
       await fetchHospitalsByCoords(lat, lng, data.formatted_address || q);
       return;
     } catch {
@@ -689,23 +858,38 @@ function initFinder() {
       setApiMode("Fallback");
       hospitalsList.innerHTML = `
         <a class="inline-flex text-sm text-skyx-200 hover:text-skyx-50 transition" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          `hospital in ${q}`
-        )}" target="_blank" rel="noreferrer">Search “hospital in ${escapeHtml(q)}” ↗</a>
+          `${searchString}${q}`
+        )}" target="_blank" rel="noreferrer">Search “${escapeHtml(searchString)}${escapeHtml(q)}” ↗</a>
       `;
-      mapFrame.src = `https://www.google.com/maps?q=${encodeURIComponent(`hospital in ${q}`)}&output=embed`;
+      mapFrame.src = `https://www.google.com/maps?q=${encodeURIComponent(`${searchString}${q}`)}&output=embed`;
       openMapsBtn.disabled = false;
       openMapsBtn.onclick = () =>
-        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`hospital in ${q}`)}`, "_blank", "noopener,noreferrer");
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${searchString}${q}`)}`, "_blank", "noopener,noreferrer");
     }
   }
 
-  placeSearchBtn.addEventListener("click", searchPlace);
   placeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       searchPlace();
     }
   });
+  if (keywordInput) {
+    keywordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        searchPlace();
+      }
+    });
+  }
+
+  // Auto-search current location on page load
+  if (!window.__locSearched) {
+    window.__locSearched = true;
+    setTimeout(() => {
+      locBtn?.click();
+    }, 600);
+  }
 }
 
 function telLink(phone) {

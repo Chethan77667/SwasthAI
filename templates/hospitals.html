@@ -92,48 +92,58 @@
           <a href="{{ url_for('home') }}" class="btn-ghost text-xs hidden sm:inline-flex">Back to home</a>
         </div>
 
-        <div class="grid lg:grid-cols-12 gap-4 lg:gap-6 items-stretch">
-          <div class="lg:col-span-5">
-            <div class="card reveal h-full">
-              <div class="text-sm text-white/70">Find near you</div>
-              <div class="mt-3 grid gap-2">
-                <div class="grid gap-2">
-                  <input id="placeInput" class="input" placeholder="Search location (e.g., 'Kundapura', '560001')" autocomplete="off" />
-                  <button id="placeSearchBtn" class="btn-ghost w-full justify-center">Search hospitals at this location</button>
-                </div>
-                <button id="locBtn" class="btn-primary w-full justify-center">Use my current location</button>
-                <button id="openMapsBtn" class="btn-ghost w-full justify-center" disabled>Open Google Maps results</button>
+        <div class="grid lg:grid-cols-12 gap-4 lg:gap-6 items-start relative pb-10">
+          <div class="lg:col-span-5 flex flex-col gap-4">
+            <!-- Search Card -->
+            <div class="card reveal">
+              <div class="text-sm text-white/70">Find hospitals near you</div>
+              <div class="mt-3 grid gap-2 mb-3">
+                 <input id="keywordInput" class="input" placeholder="Hospital name or specialty (optional)" autocomplete="off" />
+                 <input id="placeInput" class="input" placeholder="Search location (e.g., 'Mangaluru', '560001')" autocomplete="off" />
               </div>
-              <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div class="text-xs text-white/60">Detected location</div>
-                <div id="locStatus" class="mt-1 text-sm text-white/80">Not yet detected.</div>
-                <div class="mt-3 text-xs text-white/55">Tip: If location is blocked, allow it in your browser settings.</div>
+              <div class="grid gap-2">
+                 <button id="locBtn" class="btn-primary w-full justify-center">Use my current location</button>
+                 <button id="showMapMobileBtn" class="btn-ghost w-full justify-center lg:hidden flex">🗺️ View Map</button>
+                 <a id="openMapsBtn" class="btn-ghost w-full justify-center hidden items-center gap-2" target="_blank" rel="noreferrer">Open in Google Maps ↗</a>
               </div>
-              <div class="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div class="flex items-center justify-between gap-3">
-                  <div class="text-xs text-white/60">Nearby hospitals</div>
-                  <div id="apiBadge" class="badge">API auto</div>
-                </div>
-                <div id="hospitalsList" class="mt-3 grid gap-2 text-sm text-white/75">
-                  <div class="text-white/55 text-sm">Search a location to see results.</div>
-                </div>
+              
+              <div class="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+                <div class="text-[10px] text-white/50 uppercase tracking-widest font-bold">Detected location</div>
+                <div id="locStatus" class="mt-1 text-sm text-white/80">Detecting automatically...</div>
+                <div class="mt-2 text-xs text-white/55">Tip: If location is blocked, allow it in your browser settings.</div>
+              </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="card reveal">
+              <div class="flex items-center justify-between gap-3 mb-3">
+                <div class="text-white/80 font-semibold">Nearby hospitals</div>
+                <div id="apiBadge" class="badge">API auto</div>
+              </div>
+              <div id="hospitalsList" class="grid gap-2 text-sm text-white/75">
+                <div class="text-white/55 text-sm p-2">Search or use your location to see results.</div>
               </div>
             </div>
           </div>
-          <div class="lg:col-span-7">
-            <div class="card reveal h-full overflow-hidden">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-sm text-white/70">Map preview</div>
-                  <div class="text-xs text-white/55">Preview updates when you search or detect location.</div>
-                </div>
+          
+          <!-- Map Container -->
+          <div id="mapWrapper" class="fixed inset-0 z-[100] bg-ink-950/95 backdrop-blur-md hidden lg:block lg:static lg:bg-transparent lg:col-span-7 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] flex-col p-4 sm:p-6 lg:p-0">
+            <div class="flex justify-between items-center lg:hidden mb-4 mt-8">
+              <span class="font-semibold text-lg text-white">Hospital Map</span>
+              <button id="closeMapMobileBtn" class="h-10 w-10 border border-white/10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/20 transition">
+                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="card h-full lg:h-full flex flex-col overflow-hidden p-0 lg:p-4 pb-20 lg:pb-4 border-0 lg:border border-white/10 bg-transparent lg:bg-white/5">
+              <div class="hidden lg:flex items-center justify-between mb-3 px-2">
+                <div class="text-sm text-white/70">Map preview</div>
                 <div class="badge">Google Maps</div>
               </div>
-              <div class="mt-4 aspect-[16/10] w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+              <div class="flex-1 w-full rounded-2xl overflow-hidden bg-ink-900 border border-white/10 relative">
                 <iframe
                   id="mapFrame"
                   title="Google Maps preview"
-                  class="h-full w-full"
+                  class="absolute inset-0 h-full w-full"
                   loading="lazy"
                   referrerpolicy="no-referrer-when-downgrade"
                   src="https://www.google.com/maps?q=hospital%20near%20me&output=embed"
@@ -251,6 +261,36 @@
     </div>
     <div id="profileOverlay" class="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-500"></div>
 
+    <!-- Hospital Details Modal -->
+    <div id="hospitalModalOverlay" class="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300"></div>
+    <div id="hospitalModal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[120] w-[90%] max-w-md bg-ink-950/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl hidden opacity-0 scale-95 transition-all duration-300 flex-col overflow-hidden max-h-[90vh]">
+      <div class="relative w-full h-48 bg-ink-900 border-b border-white/10">
+         <img id="hospitalModalImg" src="" class="w-full h-full object-cover hidden" alt="Hospital Photo" />
+         <div id="hospitalModalImgPlaceholder" class="w-full h-full flex items-center justify-center text-white/20">
+           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+         </div>
+         <button id="closeHospitalModalBtn" class="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/50 backdrop-blur text-white flex items-center justify-center hover:bg-black/70 transition">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+         </button>
+      </div>
+      <div class="p-5 flex-1 overflow-auto space-y-4">
+         <div>
+             <h3 id="hospitalModalName" class="text-xl font-bold text-white/95 leading-tight"></h3>
+             <p id="hospitalModalAddr" class="text-sm text-white/60 mt-1"></p>
+         </div>
+         <div class="flex gap-2 text-sm mt-2">
+             <span id="hospitalModalRating" class="badge"></span>
+             <span id="hospitalModalOpen" class="badge"></span>
+         </div>
+      </div>
+      <div class="p-5 border-t border-white/10">
+         <a id="hospitalModalMapsBtn" href="#" target="_blank" class="btn-primary w-full justify-center">🗺️ Open in Google Maps</a>
+      </div>
+    </div>
+
+    {% if gapi_key %}
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ gapi_key }}&libraries=places"></script>
+    {% endif %}
     <script src="/static/app.js?v={{ build_time }}"></script>
   </body>
 </html>
