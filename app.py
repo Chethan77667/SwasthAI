@@ -52,6 +52,7 @@ class User(db.Model, UserMixin):
     age = db.Column(db.Integer, nullable=True)
     contact_no = db.Column(db.String(20), nullable=True)
     is_profile_complete = db.Column(db.Boolean, default=False)
+    user_type = db.Column(db.String(20), default="user") # 'user' or 'donor'
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -153,8 +154,6 @@ def _get_gemini_response(message: str, image_data: bytes | None = None, mime_typ
 @app.get("/")
 @login_required
 def home():
-    if not current_user.is_profile_complete:
-        return redirect(url_for('profile_setup'))
     return render_template("index.html", build_time=datetime.utcnow().isoformat() + "Z")
 
 @app.route("/profile-setup", methods=["GET", "POST"])
@@ -169,6 +168,7 @@ def profile_setup():
         current_user.area = request.form.get("area")
         current_user.age = int(request.form.get("age") or 0)
         current_user.contact_no = request.form.get("contact_no")
+        current_user.user_type = request.form.get("user_type", "user")
         current_user.is_profile_complete = True
         
         db.session.commit()
@@ -297,6 +297,30 @@ def verify_forgot_otp():
 def logout():
     logout_user()
     return redirect(url_for('home'))
+
+@app.post("/update-user-type")
+@login_required
+def update_user_type():
+    data = request.get_json()
+    new_type = data.get("user_type")
+    if new_type in ["user", "donor"]:
+        current_user.user_type = new_type
+        db.session.commit()
+        return jsonify({"success": True, "user_type": new_type})
+    return jsonify({"success": False, "error": "Invalid user type"}), 400
+
+@app.post("/api/update-profile")
+@login_required
+def update_profile():
+    data = request.get_json()
+    current_user.name = data.get("name")
+    current_user.blood_group = data.get("blood_group")
+    current_user.area = data.get("area")
+    current_user.age = int(data.get("age") or 0)
+    current_user.contact_no = data.get("contact_no")
+    current_user.is_profile_complete = True
+    db.session.commit()
+    return jsonify({"success": True})
 
 
 @app.post("/api/chat")
