@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SwasthAI • Smart Healthcare Assistant</title>
+    <meta
+      name="description"
+      content="SwasthAI is a smart healthcare assistance platform with an AI chatbot, hospital finder, doctor contact, and government scheme awareness."
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ["ui-sans-serif", "system-ui", "sans-serif"],
+            },
+            colors: {
+              ink: {
+                950: "#070A0E",
+                900: "#0B1220",
+                800: "#101B2E",
+              },
+              mint: {
+                50: "#E9FFF7",
+                100: "#D3FFF0",
+                300: "#74FBD3",
+                500: "#1EE6B6",
+                600: "#12CDA0",
+              },
+              skyx: {
+                50: "#EBF8FF",
+                200: "#BFE9FF",
+                500: "#2FB5FF",
+                600: "#159BE6",
+              },
+              rosex: {
+                500: "#FF4D7D",
+              },
+            },
+            boxShadow: {
+              glow: "0 0 0 1px rgba(255,255,255,.08), 0 18px 60px rgba(0,0,0,.45)",
+              soft: "0 12px 40px rgba(0,0,0,.35)",
+            },
+            keyframes: {
+              floaty: {
+                "0%, 100%": { transform: "translateY(0px)" },
+                "50%": { transform: "translateY(-10px)" },
+              },
+              shimmer: {
+                "0%": { backgroundPosition: "0% 50%" },
+                "100%": { backgroundPosition: "100% 50%" },
+              },
+              pop: {
+                "0%": { transform: "scale(.98)", opacity: "0" },
+                "100%": { transform: "scale(1)", opacity: "1" },
+              },
+            },
+            animation: {
+              floaty: "floaty 6s ease-in-out infinite",
+              shimmer: "shimmer 10s ease infinite",
+              pop: "pop .35s ease-out both",
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="stylesheet" href="/static/styles.css?v={{ build_time }}" />
+  </head>
+  <body class="bg-ink-950 text-white antialiased selection:bg-mint-600/40 selection:text-white">
+    <!-- Background -->
+    <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10">
+      <div class="absolute inset-0 bg-[radial-gradient(1200px_500px_at_15%_10%,rgba(47,181,255,.25),transparent_60%),radial-gradient(900px_500px_at_75%_15%,rgba(30,230,182,.23),transparent_60%),radial-gradient(800px_500px_at_55%_75%,rgba(255,77,125,.14),transparent_60%)]"></div>
+      <div class="absolute inset-0 opacity-60 bg-[linear-gradient(120deg,rgba(255,255,255,.08),transparent_40%,rgba(255,255,255,.08))] bg-[length:220%_220%] animate-shimmer"></div>
+      <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22600%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.75%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22600%22 height=%22600%22 filter=%22url(%23n)%22 opacity=%220.08%22/%3E%3C/svg%3E')] opacity-70 mix-blend-soft-light"></div>
+    </div>
+
+    <!-- Top nav -->
+    <header class="sticky top-0 z-50 backdrop-blur-xl bg-ink-950/65 border-b border-white/10">
+      <div class="mx-auto max-w-6xl px-4 sm:px-6">
+        <div class="flex items-center justify-between py-3">
+          <a href="#top" class="group inline-flex items-center gap-2">
+            <span class="relative grid place-items-center h-9 w-9 rounded-xl bg-white/10 border border-white/15 shadow-soft">
+              <span class="h-3.5 w-3.5 rounded-full bg-gradient-to-br from-mint-500 to-skyx-500"></span>
+            </span>
+            <span class="font-semibold tracking-tight text-white/95">SwasthAI</span>
+            <span class="hidden sm:inline text-xs text-white/55 border border-white/10 rounded-full px-2 py-0.5">Smart healthcare</span>
+          </a>
+
+          <nav class="hidden md:flex items-center gap-1 text-sm text-white/75">
+            <a class="navlink" href="#chat">Chatbot</a>
+            <a class="navlink" href="#finder">Hospitals</a>
+            <a class="navlink" href="#doctors">Doctors</a>
+            <a class="navlink" href="#schemes">Schemes</a>
+          </nav>
+
+          <div class="flex items-center gap-2">
+            <a href="#chat" class="hidden sm:inline-flex btn-primary">Start chat</a>
+            <button id="menuBtn" class="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition" aria-label="Open menu">
+              <span class="i-bars"></span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile drawer -->
+      <div id="mobileMenu" class="md:hidden hidden">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6 pb-4">
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <div class="grid gap-1 text-sm text-white/80">
+              <a class="navlink block" href="#chat">Chatbot</a>
+              <a class="navlink block" href="#finder">Nearby hospitals</a>
+              <a class="navlink block" href="#doctors">Doctors</a>
+              <a class="navlink block" href="#schemes">Govt schemes</a>
+            </div>
+            <div class="mt-3 flex gap-2">
+              <a href="#chat" class="btn-primary w-full justify-center">Start chat</a>
+              <button id="closeMenuBtn" class="btn-ghost w-full justify-center">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="top" class="mx-auto max-w-6xl px-4 sm:px-6">
+      <!-- Hero -->
+      <section class="pt-10 sm:pt-14 pb-10 sm:pb-14">
+        <div class="grid lg:grid-cols-12 gap-6 lg:gap-10 items-start">
+          <div class="lg:col-span-7">
+            <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+              <span class="h-2 w-2 rounded-full bg-mint-500 animate-pulse"></span>
+              AI-powered guidance • Nearby hospitals • Doctors • Schemes
+            </div>
+            <h1 class="mt-4 text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.08]">
+              Healthcare help, <span class="text-transparent bg-clip-text bg-gradient-to-r from-mint-300 via-skyx-200 to-rosex-500">anytime</span>.
+            </h1>
+            <p class="mt-4 text-white/70 text-base sm:text-lg leading-relaxed max-w-xl">
+              SwasthAI is a smart healthcare assistance platform built for accessibility—especially helpful for rural communities. Describe symptoms, find hospitals nearby, contact doctors, and learn about government health schemes.
+            </p>
+
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+              <a href="#chat" class="btn-primary justify-center">Try the chatbot</a>
+              <a href="#finder" class="btn-ghost justify-center">Find hospitals</a>
+            </div>
+
+            <div class="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div class="stat-card reveal">
+                <div class="stat-kicker">Fast</div>
+                <div class="stat-value">Instant guidance</div>
+                <div class="stat-note">Basic precautions & next steps</div>
+              </div>
+              <div class="stat-card reveal">
+                <div class="stat-kicker">Local</div>
+                <div class="stat-value">Nearby hospitals</div>
+                <div class="stat-note">Location-based maps</div>
+              </div>
+              <div class="stat-card reveal col-span-2 sm:col-span-1">
+                <div class="stat-kicker">Aware</div>
+                <div class="stat-value">Govt schemes</div>
+                <div class="stat-note">Programs & facilities</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5">
+            <div class="card-xl reveal">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-white/70">Quick start</div>
+                  <div class="text-lg font-medium">Describe your symptoms</div>
+                </div>
+                <div class="badge">Demo</div>
+              </div>
+              <div class="mt-4 grid gap-3">
+                <button class="prompt-chip" data-prompt="I have fever and headache since yesterday.">“I have fever and headache…”</button>
+                <button class="prompt-chip" data-prompt="My child has cough and sore throat for 2 days.">“My child has cough…”</button>
+                <button class="prompt-chip" data-prompt="I feel nausea and loose motion after eating outside food.">“Nausea & loose motion…”</button>
+              </div>
+              <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="flex items-center gap-2 text-xs text-white/65">
+                  <span class="h-2 w-2 rounded-full bg-skyx-500"></span>
+                  Tip: You can use Hindi/English mixed text.
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 gap-3">
+              <div class="mini-card reveal">
+                <div class="mini-title">Private</div>
+                <div class="mini-note">Your chat stays on your device in this demo.</div>
+              </div>
+              <div class="mini-card reveal">
+                <div class="mini-title">Mobile-first</div>
+                <div class="mini-note">Optimized for small screens and low bandwidth.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Chatbot -->
+      <section id="chat" class="py-10 sm:py-14 scroll-mt-24">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">AI Chatbot</h2>
+            <p class="section-subtitle">Describe symptoms to get possible causes, precautions, and when to seek care.</p>
+          </div>
+          <div class="hidden sm:flex items-center gap-2">
+            <span class="pill">Symptom guidance</span>
+            <span class="pill">Precautions</span>
+            <span class="pill">Doctor advice</span>
+          </div>
+        </div>
+
+        <div class="grid lg:grid-cols-12 gap-4 lg:gap-6">
+          <div class="lg:col-span-7">
+            <div class="card reveal">
+              <div class="flex items-center justify-between gap-3">
+                <div class="text-sm text-white/70">Chat</div>
+                <div class="text-xs text-white/55">Not a diagnosis • For awareness only</div>
+              </div>
+              <div id="chatLog" class="mt-4 chat-log" aria-live="polite"></div>
+              <form id="chatForm" class="mt-4 flex gap-2">
+                <input id="chatInput" class="input" placeholder="Type symptoms… (e.g., fever, cough, headache)" autocomplete="off" />
+                <button class="btn-primary shrink-0" type="submit">Send</button>
+              </form>
+              <div class="mt-3 text-xs text-white/55">
+                Emergency warning: if severe symptoms or breathing difficulty, seek urgent medical care.
+              </div>
+            </div>
+          </div>
+          <div class="lg:col-span-5">
+            <div class="card reveal">
+              <div class="text-sm text-white/70">What you’ll get</div>
+              <ul class="mt-3 grid gap-2 text-sm text-white/75">
+                <li class="feature-line">
+                  <span class="dot dot-mint"></span>
+                  Possible causes (general, non-diagnostic)
+                </li>
+                <li class="feature-line">
+                  <span class="dot dot-sky"></span>
+                  Simple home precautions
+                </li>
+                <li class="feature-line">
+                  <span class="dot dot-rose"></span>
+                  “Seek care if…” red flags
+                </li>
+              </ul>
+              <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="text-xs text-white/60">Try a prompt</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <button class="chip" data-prompt="I have fever and body pain.">Fever + body pain</button>
+                  <button class="chip" data-prompt="Chest tightness and sweating.">Chest tightness</button>
+                  <button class="chip" data-prompt="Vomiting and diarrhea since morning.">Vomiting + diarrhea</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hospital finder -->
+      <section id="finder" class="py-10 sm:py-14 scroll-mt-24">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Nearby Hospital Finder</h2>
+            <p class="section-subtitle">Search any place (village/city/pincode) or use your GPS to find nearby hospitals.</p>
+          </div>
+          <span class="pill">Maps</span>
+        </div>
+
+        <div class="grid lg:grid-cols-12 gap-4 lg:gap-6 items-stretch">
+          <div class="lg:col-span-5">
+            <div class="card reveal h-full">
+              <div class="text-sm text-white/70">Find near you</div>
+              <div class="mt-3 grid gap-2">
+                <div class="grid gap-2">
+                  <input id="placeInput" class="input" placeholder="Search location (e.g., 'Kundapura', '560001')" autocomplete="off" />
+                  <button id="placeSearchBtn" class="btn-ghost w-full justify-center">Search hospitals at this location</button>
+                </div>
+                <button id="locBtn" class="btn-primary w-full justify-center">Use my current location</button>
+                <button id="openMapsBtn" class="btn-ghost w-full justify-center" disabled>Open Google Maps results</button>
+              </div>
+              <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="text-xs text-white/60">Detected location</div>
+                <div id="locStatus" class="mt-1 text-sm text-white/80">Not yet detected.</div>
+                <div class="mt-3 text-xs text-white/55">Tip: If location is blocked, allow it in your browser settings.</div>
+              </div>
+              <div class="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-xs text-white/60">Nearby hospitals</div>
+                  <div id="apiBadge" class="badge">API auto</div>
+                </div>
+                <div class="mt-3 grid gap-2">
+                  <select id="hospitalSelect" class="input" disabled>
+                    <option value="">Search a location to load hospitals…</option>
+                  </select>
+                  <button id="showHospitalBtn" class="btn-primary w-full justify-center" disabled>Show selected hospital on map</button>
+                </div>
+                <div id="hospitalsList" class="mt-3 grid gap-2 text-sm text-white/75">
+                  <div class="text-white/55 text-sm">Search a location to see results.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="lg:col-span-7">
+            <div class="card reveal h-full overflow-hidden">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-white/70">Map preview</div>
+                  <div class="text-xs text-white/55">Preview updates when you search or detect location.</div>
+                </div>
+                <div class="badge">Google Maps</div>
+              </div>
+              <div class="mt-4 aspect-[16/10] w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                <iframe
+                  id="mapFrame"
+                  title="Google Maps preview"
+                  class="h-full w-full"
+                  loading="lazy"
+                  referrerpolicy="no-referrer-when-downgrade"
+                  src="https://www.google.com/maps?q=hospital%20near%20me&output=embed"
+                ></iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Doctors -->
+      <section id="doctors" class="py-10 sm:py-14 scroll-mt-24">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Doctors & Contact</h2>
+            <p class="section-subtitle">Browse available doctors and contact by call or WhatsApp.</p>
+          </div>
+          <span class="pill">Contact</span>
+        </div>
+
+        <div class="card reveal">
+          <div class="flex items-start sm:items-center justify-between gap-3">
+            <div>
+              <div class="text-sm text-white/70">Available doctors</div>
+              <div class="text-xs text-white/55">Demo data from backend (replace with MongoDB later).</div>
+            </div>
+            <button id="refreshDoctorsBtn" class="btn-ghost">Refresh</button>
+          </div>
+          <div id="doctorsGrid" class="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </div>
+      </section>
+
+      <!-- Schemes -->
+      <section id="schemes" class="py-10 sm:py-14 scroll-mt-24">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Government Health Schemes</h2>
+            <p class="section-subtitle">Updated awareness cards for common programs and how to use them.</p>
+          </div>
+          <span class="pill">Awareness</span>
+        </div>
+
+        <div class="card reveal">
+          <div class="flex items-start sm:items-center justify-between gap-3">
+            <div>
+              <div class="text-sm text-white/70">Schemes</div>
+              <div class="text-xs text-white/55">Demo list from backend (can be made dynamic later).</div>
+            </div>
+            <button id="refreshSchemesBtn" class="btn-ghost">Refresh</button>
+          </div>
+          <div id="schemesGrid" class="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </div>
+      </section>
+
+      <footer class="py-10 text-xs text-white/55">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-white/10 pt-6">
+          <div>
+            <div class="text-white/75">SwasthAI</div>
+            <div class="mt-1">Built with HTML, Tailwind CSS, JavaScript, and Flask.</div>
+          </div>
+          <div class="text-white/55">
+            <span class="inline-flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-mint-500"></span>
+              Build: {{ build_time }}
+            </span>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <script src="/static/app.js?v={{ build_time }}"></script>
+  </body>
+</html>
+
