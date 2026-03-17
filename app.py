@@ -16,8 +16,11 @@ from flask_mail import Mail, Message
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
 
-# Load environment variables from .env
-load_dotenv()
+# Load environment variables from .env or env
+if os.path.exists("env"):
+    load_dotenv("env")
+else:
+    load_dotenv()
 
 
 app = Flask(__name__)
