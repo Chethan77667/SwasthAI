@@ -516,6 +516,16 @@ function initProfile() {
   profileOverlay.addEventListener("click", closeProfile);
 }
 
+function initBottomNav() {
+  const nav = $("#bottomNav");
+  if (!nav) return;
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  nav.querySelectorAll("a[data-path]").forEach((a) => {
+    const p = (a.getAttribute("data-path") || "").replace(/\/+$/, "") || "/";
+    if (p === path) a.classList.add("active");
+  });
+}
+
 async function updateAccountType(newType) {
   const slider = $("#typeSlider");
   const userBtn = $("#userTypeBtn");
@@ -613,5 +623,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initFinder();
   initData();
   initProfile();
+  initBottomNav();
 });
 

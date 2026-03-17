@@ -8,6 +8,63 @@ html {
   scroll-behavior: smooth;
 }
 
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  padding: 0.65rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+  background: rgba(7, 10, 14, 0.72);
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(16px);
+}
+.bottom-nav-inner {
+  max-width: 56rem;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+.bottom-nav-link {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: 0.45rem 0.25rem;
+  border-radius: 1rem;
+  color: rgba(255, 255, 255, 0.62);
+  border: 1px solid transparent;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+.bottom-nav-link:active {
+  transform: translateY(1px);
+}
+.bottom-nav-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.85);
+}
+.bottom-nav-link svg {
+  width: 20px;
+  height: 20px;
+}
+.bottom-nav-link .label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  opacity: 0.9;
+}
+.bottom-nav-link.active {
+  color: rgba(7, 10, 14, 0.95);
+  background: linear-gradient(135deg, rgba(30, 230, 182, 0.95), rgba(47, 181, 255, 0.95));
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+.bottom-nav-link.active .label {
+  opacity: 1;
+}
+
 .navlink {
   padding: 0.5rem 0.75rem;
   border-radius: 0.9rem;

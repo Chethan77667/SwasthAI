@@ -260,8 +260,14 @@ def signup():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     if request.method == "POST":
-        email = request.form.get("email")
-        password = request.form.get("password")
+        email = (request.form.get("email") or "").strip().lower()
+        password = (request.form.get("password") or "").strip()
+        if "@" not in email or "." not in email:
+            flash("Please enter a valid email address", "danger")
+            return redirect(url_for('signup'))
+        if len(password) < 6:
+            flash("Password must be at least 6 characters", "danger")
+            return redirect(url_for('signup'))
         
         user_exists = User.from_email(email)
         if user_exists:
@@ -269,6 +275,26 @@ def signup():
             return redirect(url_for('signup'))
         
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
+        # If mail isn't configured, allow dev signup without OTP.
+        if not (app.config.get("MAIL_USERNAME") and app.config.get("MAIL_PASSWORD")):
+            _users_col().insert_one(
+                {
+                    "email": email,
+                    "password": hashed_pw,
+                    "is_verified": True,
+                    "name": None,
+                    "blood_group": None,
+                    "area": None,
+                    "age": None,
+                    "contact_no": None,
+                    "is_profile_complete": False,
+                    "user_type": "user",
+                    "created_at": datetime.utcnow(),
+                }
+            )
+            flash("Account created. Please login.", "success")
+            return redirect(url_for('login'))
+
         # Store temporary data in session for OTP verification
         session['signup_data'] = {'email': email, 'password': hashed_pw}
         
@@ -328,14 +354,14 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     if request.method == "POST":
-        email = request.form.get("email")
-        password = request.form.get("password")
+        email = (request.form.get("email") or "").strip().lower()
+        password = (request.form.get("password") or "").strip()
         user = User.from_email(email)
         if user and bcrypt.check_password_hash(user.password, password):
             login_user(user)
             return redirect(url_for('home'))
         else:
-            flash("Invalid email or password", "danger")
+            flash("Invalid email or password (or account not created yet)", "danger")
     return render_template("login.html")
 
 @app.route("/forgot-password", methods=["GET", "POST"])
@@ -344,11 +370,15 @@ def forgot_password():
         return redirect(url_for('home'))
         
     if request.method == "POST":
-        email = request.form.get("email")
+        email = (request.form.get("email") or "").strip().lower()
         user = User.from_email(email)
         
         if not user:
             flash("No account found with that email", "danger")
+            return redirect(url_for('forgot_password'))
+
+        if not (app.config.get("MAIL_USERNAME") and app.config.get("MAIL_PASSWORD")):
+            flash("Password reset OTP email is not configured on this server.", "danger")
             return redirect(url_for('forgot_password'))
             
         otp = "".join(random.choices(string.digits, k=6))
