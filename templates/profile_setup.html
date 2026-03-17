@@ -80,6 +80,28 @@
           <input type="text" name="area" class="input" placeholder="City, State" required />
         </div>
 
+        <div class="col-span-full space-y-3">
+          <label class="text-white/70 font-medium ml-1">I want to use SwasthAI as:</label>
+          <div class="grid grid-cols-2 gap-4">
+            <label class="relative flex items-center justify-center p-4 rounded-xl border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 transition group">
+              <input type="radio" name="user_type" value="user" class="peer sr-only" checked required />
+              <div class="absolute inset-0 rounded-xl border-2 border-mint-500/0 peer-checked:border-mint-500/50 transition"></div>
+              <div class="flex flex-col items-center gap-1 z-10">
+                <span class="text-sm font-bold peer-checked:text-mint-500 transition">User</span>
+                <span class="text-[10px] text-white/40">Seeking healthcare help</span>
+              </div>
+            </label>
+            <label class="relative flex items-center justify-center p-4 rounded-xl border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 transition group">
+              <input type="radio" name="user_type" value="donor" class="peer sr-only" required />
+              <div class="absolute inset-0 rounded-xl border-2 border-mint-500/0 peer-checked:border-mint-500/50 transition"></div>
+              <div class="flex flex-col items-center gap-1 z-10">
+                <span class="text-sm font-bold peer-checked:text-mint-500 transition">Donor</span>
+                <span class="text-[10px] text-white/40">Helping others with aid</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <div class="col-span-full mt-6">
           <button type="submit" class="btn-primary w-full justify-center py-4">Save & Continue →</button>
         </div>
