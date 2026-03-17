@@ -260,6 +260,17 @@ html {
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* Language selectors: force readable black text */
+#siteLang,
+#languageSelect {
+  color: rgba(11, 18, 32, 0.95) !important;
+}
+#siteLang option,
+#languageSelect option {
+  color: rgba(11, 18, 32, 0.95) !important;
+  background: #ffffff;
+}
+
 .chat-log {
   min-height: 18rem;
   max-height: 22rem;

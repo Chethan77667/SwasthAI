@@ -6,3 +6,4 @@ flask-login
 flask-bcrypt
 Flask-Mail
 pymongo>=4.8.0
+dnspython

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import io
 import os
 import json
 import random
@@ -13,6 +14,7 @@ from bson.objectid import ObjectId
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
+from gridfs import GridFS
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
 
@@ -56,6 +58,12 @@ def _mongo_db_name() -> str:
 def _users_col():
     return _mongo_client()[_mongo_db_name()]["users"]
 
+def _donor_requests_col():
+    return _mongo_client()[_mongo_db_name()]["donor_requests"]
+
+def _fs() -> GridFS:
+    return GridFS(_mongo_client()[_mongo_db_name()])
+
 
 def _init_mongo() -> None:
     global _mongo_initialized
@@ -64,6 +72,8 @@ def _init_mongo() -> None:
     # ensure connection is attempted and indexes exist
     _mongo_client().admin.command("ping")
     _users_col().create_index("email", unique=True)
+    _donor_requests_col().create_index([("donor_id", 1), ("status", 1), ("created_at", -1)])
+    _donor_requests_col().create_index([("requester_id", 1), ("created_at", -1)])
     _mongo_initialized = True
 
 
@@ -231,6 +241,11 @@ def doctors_page():
 @login_required
 def schemes_page():
     return render_template("schemes.html", build_time=datetime.utcnow().isoformat() + "Z")
+
+@app.get("/donors")
+@login_required
+def donors_page():
+    return render_template("donors.html", build_time=datetime.utcnow().isoformat() + "Z")
 
 @app.route("/profile-setup", methods=["GET", "POST"])
 @login_required
@@ -532,6 +547,173 @@ def schemes():
                 },
             ]
         }
+    )
+
+
+def _public_user_view(doc: dict) -> dict:
+    name = doc.get("name") or (doc.get("email", "").split("@")[0] if doc.get("email") else "Donor")
+    return {
+        "id": str(doc.get("_id")),
+        "name": name,
+        "blood_group": doc.get("blood_group"),
+        "area": doc.get("area"),
+        "contact_no": doc.get("contact_no"),
+        "user_type": doc.get("user_type") or "user",
+    }
+
+
+@app.get("/api/donors")
+@login_required
+def donors_api():
+    blood_group = (request.args.get("blood_group") or "").strip()
+    area = (request.args.get("area") or "").strip()
+
+    q: dict = {"user_type": "donor", "is_profile_complete": True}
+    if blood_group:
+        q["blood_group"] = blood_group
+    if area:
+        q["area"] = {"$regex": area, "$options": "i"}
+
+    donors = list(_users_col().find(q, {"password": 0}).sort("name", 1).limit(50))
+    return jsonify({"donors": [_public_user_view(d) for d in donors]})
+
+
+@app.post("/api/donor_requests")
+@login_required
+def create_donor_request():
+    donor_id = (request.form.get("donor_id") or "").strip()
+    reason = (request.form.get("reason") or "").strip()
+    message = (request.form.get("message") or "").strip()
+    slip = request.files.get("slip")
+
+    if not donor_id:
+        return jsonify({"error": "donor_id is required"}), 400
+    if not reason:
+        return jsonify({"error": "reason is required"}), 400
+
+    try:
+        donor_oid = ObjectId(donor_id)
+    except Exception:
+        return jsonify({"error": "invalid donor_id"}), 400
+
+    donor = _users_col().find_one({"_id": donor_oid})
+    if not donor or (donor.get("user_type") or "user") != "donor":
+        return jsonify({"error": "donor not found"}), 404
+
+    slip_file_id = None
+    slip_meta = None
+    if slip and slip.filename:
+        data = slip.read()
+        if len(data) > 8 * 1024 * 1024:
+            return jsonify({"error": "slip too large (max 8MB)"}), 400
+        slip_file_id = _fs().put(
+            data,
+            filename=slip.filename,
+            content_type=slip.mimetype,
+            uploader_id=ObjectId(current_user.id),
+            created_at=datetime.utcnow(),
+        )
+        slip_meta = {"filename": slip.filename, "content_type": slip.mimetype, "size": len(data)}
+
+    doc = {
+        "donor_id": donor_oid,
+        "requester_id": ObjectId(current_user.id),
+        "reason": reason,
+        "message": message,
+        "slip_file_id": slip_file_id,
+        "slip_meta": slip_meta,
+        "status": "pending",  # pending|accepted|rejected
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    }
+    rid = _donor_requests_col().insert_one(doc).inserted_id
+    return jsonify({"success": True, "request_id": str(rid)})
+
+
+@app.get("/api/donor_requests")
+@login_required
+def list_donor_requests():
+    if (current_user.user_type or "user") == "donor":
+        q = {"donor_id": ObjectId(current_user.id)}
+    else:
+        q = {"requester_id": ObjectId(current_user.id)}
+
+    items = list(_donor_requests_col().find(q).sort("created_at", -1).limit(100))
+    user_ids = set()
+    for it in items:
+        user_ids.add(it["donor_id"])
+        user_ids.add(it["requester_id"])
+    users = {u["_id"]: u for u in _users_col().find({"_id": {"$in": list(user_ids)}}, {"password": 0})}
+
+    out = []
+    for it in items:
+        donor = users.get(it["donor_id"]) or {}
+        requester = users.get(it["requester_id"]) or {}
+        out.append(
+            {
+                "id": str(it["_id"]),
+                "status": it.get("status"),
+                "reason": it.get("reason"),
+                "message": it.get("message"),
+                "created_at": it.get("created_at").isoformat() + "Z",
+                "updated_at": it.get("updated_at").isoformat() + "Z",
+                "donor": _public_user_view(donor) if donor else None,
+                "requester": _public_user_view(requester) if requester else None,
+                "slip": it.get("slip_meta"),
+                "has_slip": bool(it.get("slip_file_id")),
+            }
+        )
+
+    return jsonify({"requests": out})
+
+
+@app.post("/api/donor_requests/<rid>/status")
+@login_required
+def update_donor_request_status(rid: str):
+    if (current_user.user_type or "user") != "donor":
+        return jsonify({"error": "only donors can update status"}), 403
+    data = request.get_json(silent=True) or {}
+    status = (data.get("status") or "").strip().lower()
+    if status not in ("accepted", "rejected"):
+        return jsonify({"error": "status must be accepted or rejected"}), 400
+    try:
+        oid = ObjectId(rid)
+    except Exception:
+        return jsonify({"error": "invalid request id"}), 400
+
+    res = _donor_requests_col().update_one(
+        {"_id": oid, "donor_id": ObjectId(current_user.id), "status": "pending"},
+        {"$set": {"status": status, "updated_at": datetime.utcnow()}},
+    )
+    if res.matched_count == 0:
+        return jsonify({"error": "request not found (or already handled)"}), 404
+    return jsonify({"success": True, "status": status})
+
+
+@app.get("/api/donor_requests/<rid>/slip")
+@login_required
+def download_donor_request_slip(rid: str):
+    try:
+        oid = ObjectId(rid)
+    except Exception:
+        return jsonify({"error": "invalid request id"}), 400
+    it = _donor_requests_col().find_one({"_id": oid})
+    if not it or not it.get("slip_file_id"):
+        return jsonify({"error": "slip not found"}), 404
+
+    # only donor or requester can view
+    uid = ObjectId(current_user.id)
+    if uid not in (it["donor_id"], it["requester_id"]):
+        return jsonify({"error": "forbidden"}), 403
+
+    gf = _fs().get(it["slip_file_id"])
+    data = gf.read()
+    ct = getattr(gf, "content_type", None) or "application/octet-stream"
+    filename = getattr(gf, "filename", None) or "slip"
+    return app.response_class(
+        data,
+        mimetype=ct,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
 
 

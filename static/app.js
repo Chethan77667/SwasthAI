@@ -1,6 +1,93 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+const I18N = {
+  en: {
+    "nav.home": "Home",
+    "nav.chatbot": "Chatbot",
+    "nav.hospitals": "Hospitals",
+    "nav.doctors": "Doctors",
+    "nav.schemes": "Schemes",
+    "cta.try_chatbot": "Try the chatbot",
+    "cta.find_hospitals": "Find hospitals",
+    "home.kicker": "AI-powered guidance • Nearby hospitals • Doctors • Schemes",
+    "home.hero_1": "Healthcare help,",
+    "home.hero_2": "anytime",
+    "home.subtitle":
+      "SwasthAI is a smart healthcare assistance platform built for accessibility—especially helpful for rural communities. Describe symptoms, find hospitals nearby, contact doctors, and learn about government health schemes."
+  },
+  hi: {
+    "nav.home": "होम",
+    "nav.chatbot": "चैटबॉट",
+    "nav.hospitals": "अस्पताल",
+    "nav.doctors": "डॉक्टर",
+    "nav.schemes": "योजनाएँ",
+    "cta.try_chatbot": "चैटबॉट आज़माएँ",
+    "cta.find_hospitals": "अस्पताल खोजें",
+    "home.kicker": "AI सहायता • नज़दीकी अस्पताल • डॉक्टर • योजनाएँ",
+    "home.hero_1": "स्वास्थ्य सहायता,",
+    "home.hero_2": "कभी भी",
+    "home.subtitle":
+      "SwasthAI एक स्मार्ट हेल्थकेयर सहायता प्लेटफ़ॉर्म है—खासकर ग्रामीण समुदायों के लिए उपयोगी। लक्षण बताएँ, नज़दीकी अस्पताल खोजें, डॉक्टरों से संपर्क करें और सरकारी स्वास्थ्य योजनाओं के बारे में जानें।"
+  },
+  kn: {
+    "nav.home": "ಮುಖಪುಟ",
+    "nav.chatbot": "ಚಾಟ್‌ಬಾಟ್",
+    "nav.hospitals": "ಆಸ್ಪತ್ರೆಗಳು",
+    "nav.doctors": "ವೈದ್ಯರು",
+    "nav.schemes": "ಯೋಜನೆಗಳು",
+    "cta.try_chatbot": "ಚಾಟ್‌ಬಾಟ್ ಪ್ರಯತ್ನಿಸಿ",
+    "cta.find_hospitals": "ಆಸ್ಪತ್ರೆ ಹುಡುಕಿ",
+    "home.kicker": "AI ಮಾರ್ಗದರ್ಶನ • ಹತ್ತಿರದ ಆಸ್ಪತ್ರೆಗಳು • ವೈದ್ಯರು • ಯೋಜನೆಗಳು",
+    "home.hero_1": "ಆರೋಗ್ಯ ಸಹಾಯ,",
+    "home.hero_2": "ಯಾವಾಗಲೂ",
+    "home.subtitle":
+      "SwasthAI ಒಂದು ಸ್ಮಾರ್ಟ್ ಆರೋಗ್ಯ ಸಹಾಯಕ ವೇದಿಕೆ—ಗ್ರಾಮೀಣ ಸಮುದಾಯಗಳಿಗೆ ವಿಶೇಷವಾಗಿ ಸಹಾಯಕ. ಲಕ್ಷಣಗಳನ್ನು ವಿವರಿಸಿ, ಹತ್ತಿರದ ಆಸ್ಪತ್ರೆಗಳನ್ನು ಹುಡುಕಿ, ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ ಹಾಗೂ ಸರ್ಕಾರದ ಆರೋಗ್ಯ ಯೋಜನೆಗಳನ್ನು ತಿಳಿದುಕೊಳ್ಳಿ."
+  }
+};
+
+function getLang() {
+  return localStorage.getItem("siteLang") || "en";
+}
+
+function setLang(lang) {
+  localStorage.setItem("siteLang", lang);
+}
+
+function t(key) {
+  const lang = getLang();
+  return (I18N[lang] && I18N[lang][key]) || (I18N.en[key] || key);
+}
+
+function applyI18n() {
+  $$("[data-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-i18n");
+    if (!key) return;
+    el.textContent = t(key);
+  });
+}
+
+function initSiteLanguage() {
+  const sel = $("#siteLang");
+  if (!sel) return;
+  sel.value = getLang();
+  sel.addEventListener("change", () => {
+    setLang(sel.value);
+    applyI18n();
+    // sync chatbot language selector if present
+    const chatSel = $("#languageSelect");
+    if (chatSel) {
+      chatSel.value = sel.value === "hi" ? "Hindi" : sel.value === "kn" ? "Kannada" : "English";
+    }
+  });
+  // initial apply
+  applyI18n();
+  const chatSel = $("#languageSelect");
+  if (chatSel) {
+    chatSel.value = sel.value === "hi" ? "Hindi" : sel.value === "kn" ? "Kannada" : "English";
+  }
+}
+
 function escapeHtml(str) {
   return String(str)
     .replaceAll("&", "&amp;")
@@ -377,8 +464,7 @@ function initFinder() {
       // Fallback: just open Google Maps search for the typed place.
       setApiMode("Fallback");
       hospitalsList.innerHTML = `
-        <div class="text-white/55 text-sm">API key not set (or request failed). Using Google Maps search link instead.</div>
-        <a class="mt-2 inline-flex text-sm text-skyx-200 hover:text-skyx-50 transition" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        <a class="inline-flex text-sm text-skyx-200 hover:text-skyx-50 transition" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
           `hospital in ${q}`
         )}" target="_blank" rel="noreferrer">Search “hospital in ${escapeHtml(q)}” ↗</a>
       `;
@@ -526,6 +612,212 @@ function initBottomNav() {
   });
 }
 
+function donorCard(d) {
+  const bg = d.blood_group ? `<span class="badge">${escapeHtml(d.blood_group)}</span>` : `<span class="badge">--</span>`;
+  const area = d.area ? `<div class="text-xs text-white/55 mt-1">${escapeHtml(d.area)}</div>` : "";
+  return `
+    <div class="mini-card">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="font-semibold tracking-tight truncate">${escapeHtml(d.name || "Donor")}</div>
+          ${area}
+        </div>
+        <div class="shrink-0">${bg}</div>
+      </div>
+      <button class="mt-4 btn-primary w-full justify-center" data-donor-id="${escapeHtml(d.id)}" data-donor-name="${escapeHtml(
+    d.name || "Donor"
+  )}" data-donor-bg="${escapeHtml(d.blood_group || "")}" data-donor-area="${escapeHtml(d.area || "")}">Message donor</button>
+    </div>
+  `;
+}
+
+function openRequestModal({ id, name, blood_group, area }) {
+  const modal = $("#requestModal");
+  const overlay = $("#requestOverlay");
+  const panel = $("#requestPanel");
+  if (!modal || !overlay || !panel) return;
+  $("#requestDonorId").value = id;
+  $("#requestDonorName").textContent = name;
+  $("#requestDonorMeta").textContent = [blood_group, area].filter(Boolean).join(" • ");
+  $("#requestReason").value = "";
+  $("#requestMessage").value = "";
+  $("#requestSlip").value = "";
+  $("#requestStatus").classList.add("hidden");
+
+  modal.classList.remove("hidden");
+  requestAnimationFrame(() => {
+    overlay.classList.add("opacity-100");
+    panel.classList.remove("opacity-0", "translate-y-2");
+  });
+}
+
+function closeRequestModal() {
+  const modal = $("#requestModal");
+  const overlay = $("#requestOverlay");
+  const panel = $("#requestPanel");
+  if (!modal || !overlay || !panel) return;
+  overlay.classList.remove("opacity-100");
+  panel.classList.add("opacity-0", "translate-y-2");
+  setTimeout(() => {
+    modal.classList.add("hidden");
+  }, 250);
+}
+
+async function loadDonors() {
+  const grid = $("#donorsGrid");
+  const count = $("#donorsCount");
+  if (!grid) return;
+  grid.innerHTML = `<div class="text-sm text-white/70">Loading…</div>`;
+  const bg = $("#bloodGroupSelect")?.value || "";
+  const area = ($("#donorAreaInput")?.value || "").trim();
+
+  const qs = new URLSearchParams();
+  if (bg) qs.set("blood_group", bg);
+  if (area) qs.set("area", area);
+
+  try {
+    const res = await fetch(`/api/donors?${qs.toString()}`);
+    const data = await res.json();
+    const donors = data.donors || [];
+    if (count) count.textContent = String(donors.length);
+    grid.innerHTML = donors.map(donorCard).join("") || `<div class="text-sm text-white/70">No donors found.</div>`;
+
+    grid.querySelectorAll("button[data-donor-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        openRequestModal({
+          id: btn.getAttribute("data-donor-id"),
+          name: btn.getAttribute("data-donor-name"),
+          blood_group: btn.getAttribute("data-donor-bg"),
+          area: btn.getAttribute("data-donor-area"),
+        });
+      });
+    });
+  } catch {
+    grid.innerHTML = `<div class="text-sm text-white/70">Couldn’t load donors.</div>`;
+  }
+}
+
+async function submitDonorRequest(e) {
+  e.preventDefault();
+  const form = $("#requestForm");
+  const btn = $("#submitRequestBtn");
+  const status = $("#requestStatus");
+  if (!form || !btn || !status) return;
+
+  const fd = new FormData(form);
+  btn.disabled = true;
+  btn.textContent = "Sending…";
+  status.classList.remove("hidden");
+  status.textContent = "Submitting request…";
+
+  try {
+    const res = await fetch("/api/donor_requests", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      status.textContent = data?.error || "Failed to submit request.";
+      return;
+    }
+    status.textContent = "Request sent successfully.";
+    setTimeout(() => closeRequestModal(), 600);
+  } catch {
+    status.textContent = "Network error. Please try again.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Send request";
+  }
+}
+
+function requestRow(r) {
+  const who = r.requester?.name || r.requester?.email || "User";
+  const meta = r.requester?.area ? ` • ${escapeHtml(r.requester.area)}` : "";
+  const slip =
+    r.has_slip && r.slip
+      ? `<a class="text-xs text-skyx-200 hover:text-skyx-50 transition" href="/api/donor_requests/${escapeHtml(
+          r.id
+        )}/slip" target="_blank" rel="noreferrer">View slip ↗</a>`
+      : `<div class="text-xs text-white/35">No slip</div>`;
+  const badge =
+    r.status === "pending"
+      ? `<span class="badge">Pending</span>`
+      : r.status === "accepted"
+      ? `<span class="badge">Accepted</span>`
+      : `<span class="badge">Rejected</span>`;
+  const actions =
+    r.status === "pending"
+      ? `<div class="mt-3 grid grid-cols-2 gap-2">
+          <button class="btn-primary w-full justify-center text-xs" data-action="accept" data-id="${escapeHtml(r.id)}">Accept</button>
+          <button class="btn-ghost w-full justify-center text-xs" data-action="reject" data-id="${escapeHtml(r.id)}">Reject</button>
+        </div>`
+      : "";
+  return `
+    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-sm font-semibold truncate">${escapeHtml(who)}${meta}</div>
+          <div class="mt-1 text-xs text-white/55">${escapeHtml(new Date(r.created_at).toLocaleString())}</div>
+        </div>
+        <div class="shrink-0 flex items-center gap-2">${badge}${slip}</div>
+      </div>
+      <div class="mt-3 text-sm text-white/80"><span class="text-white/60">Reason:</span> ${escapeHtml(r.reason || "")}</div>
+      ${r.message ? `<div class="mt-2 text-sm text-white/70"><span class="text-white/60">Message:</span> ${escapeHtml(r.message)}</div>` : ""}
+      ${actions}
+    </div>
+  `;
+}
+
+async function loadDonorRequests() {
+  const list = $("#requestsList");
+  if (!list) return;
+  list.innerHTML = `<div class="text-sm text-white/70">Loading…</div>`;
+  try {
+    const res = await fetch("/api/donor_requests");
+    const data = await res.json();
+    const items = data.requests || [];
+    list.innerHTML = items.map(requestRow).join("") || `<div class="text-sm text-white/70">No requests yet.</div>`;
+    list.querySelectorAll("button[data-action]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const action = btn.getAttribute("data-action");
+        const status = action === "accept" ? "accepted" : "rejected";
+        btn.disabled = true;
+        try {
+          await fetch(`/api/donor_requests/${encodeURIComponent(id)}/status`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          });
+          await loadDonorRequests();
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch {
+    list.innerHTML = `<div class="text-sm text-white/70">Couldn’t load requests.</div>`;
+  }
+}
+
+function initDonorsPage() {
+  $("#searchDonorsBtn")?.addEventListener("click", loadDonors);
+  $("#bloodGroupSelect")?.addEventListener("change", loadDonors);
+  $("#donorAreaInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      loadDonors();
+    }
+  });
+
+  $("#closeRequestBtn")?.addEventListener("click", closeRequestModal);
+  $("#cancelRequestBtn")?.addEventListener("click", closeRequestModal);
+  $("#requestOverlay")?.addEventListener("click", closeRequestModal);
+  $("#requestForm")?.addEventListener("submit", submitDonorRequest);
+
+  $("#refreshRequestsBtn")?.addEventListener("click", loadDonorRequests);
+
+  if ($("#donorsGrid")) loadDonors();
+  if ($("#requestsList")) loadDonorRequests();
+}
+
 async function updateAccountType(newType) {
   const slider = $("#typeSlider");
   const userBtn = $("#userTypeBtn");
@@ -617,6 +909,7 @@ async function saveProfileDetails(event) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  initSiteLanguage();
   initMenu();
   initReveal();
   initChat();
@@ -624,5 +917,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initData();
   initProfile();
   initBottomNav();
+  initDonorsPage();
 });
 
