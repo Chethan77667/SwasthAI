@@ -265,7 +265,19 @@ async function sendChat(message, imageFile, opts = {}) {
 
 function initChat() {
   const log = $("#chatLog");
-  if (!log) return;
+  if (!log) {
+    // If user clicks a prompt chip on landing page, route them to the chatbot page.
+    const promptButtons = $$(".chip, .prompt-chip");
+    for (const btn of promptButtons) {
+      btn.addEventListener("click", () => {
+        const prompt = btn.getAttribute("data-prompt");
+        const url = new URL("/chatbot", window.location.origin);
+        if (prompt) url.searchParams.set("prompt", prompt);
+        window.location.href = url.toString();
+      });
+    }
+    return;
+  }
 
   appendMessageToLog(log, {
     role: "assistant",
@@ -320,7 +332,6 @@ function initChat() {
       $("#chatInput").value = prompt;
       $("#chatInput").focus();
       await sendChat(prompt);
-      location.hash = "#chat";
     });
   }
 }
@@ -729,6 +740,106 @@ function initProfile() {
   profileOverlay.addEventListener("click", closeProfile);
 }
 
+function initBottomNav() {
+  const nav = $("#bottomNav");
+  if (!nav) return;
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  nav.querySelectorAll("a[data-path]").forEach((a) => {
+    const p = (a.getAttribute("data-path") || "").replace(/\/+$/, "") || "/";
+    if (p === path) a.classList.add("active");
+  });
+}
+
+async function updateAccountType(newType) {
+  const slider = $("#typeSlider");
+  const userBtn = $("#userTypeBtn");
+  const donorBtn = $("#donorTypeBtn");
+  const desc = $("#typeDesc");
+
+  if (!slider || !userBtn || !donorBtn || !desc) return;
+
+  try {
+    const res = await fetch("/update-user-type", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_type: newType })
+    });
+
+    if (res.ok) {
+      // Update UI
+      if (newType === 'donor') {
+        slider.classList.add("translate-x-full");
+        donorBtn.classList.remove("text-white/50", "hover:text-white");
+        donorBtn.classList.add("text-ink-950");
+        userBtn.classList.remove("text-ink-950");
+        userBtn.classList.add("text-white/50", "hover:text-white");
+        desc.textContent = "Helping others with aid";
+      } else {
+        slider.classList.remove("translate-x-full");
+        userBtn.classList.remove("text-white/50", "hover:text-white");
+        userBtn.classList.add("text-ink-950");
+        donorBtn.classList.remove("text-ink-950");
+        donorBtn.classList.add("text-white/50", "hover:text-white");
+        desc.textContent = "Seeking healthcare help";
+      }
+    } else {
+      console.error("Failed to update user type");
+    }
+  } catch (err) {
+    console.error("Error updating user type:", err);
+  }
+}
+
+function toggleProfileEdit(isEdit) {
+  const viewMode = $("#profileViewMode");
+  const editMode = $("#profileEditMode");
+  if (isEdit) {
+    viewMode.classList.add("hidden");
+    editMode.classList.remove("hidden");
+  } else {
+    viewMode.classList.remove("hidden");
+    editMode.classList.add("hidden");
+  }
+}
+
+async function saveProfileDetails(event) {
+  event.preventDefault();
+  const form = event.target;
+  const btn = $("#saveProfileBtn");
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData.entries());
+
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/api/update-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+      // Update the view fields
+      $("#view_name").textContent = data.name;
+      $("#view_blood_group").textContent = data.blood_group;
+      $("#view_age").textContent = data.age;
+      $("#view_contact_no").textContent = data.contact_no;
+      $("#view_area").textContent = data.area;
+      
+      toggleProfileEdit(false);
+    } else {
+      alert("Failed to save profile. Please try again.");
+    }
+  } catch (err) {
+    console.error("Error saving profile:", err);
+    alert("An error occurred. Please try again.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Save Changes";
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initMenu();
   initReveal();
@@ -737,5 +848,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initFinder();
   initData();
   initProfile();
+  initBottomNav();
 });
 

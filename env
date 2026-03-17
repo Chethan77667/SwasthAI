@@ -1,0 +1,8 @@
+GEMINI_API_KEY=AIzaSyCN0pGz79eyd0dEj8b42pzb1WlT4CRGR7w
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+MAIL_USERNAME=abc387029@gmail.com
+MAIL_PASSWORD=kaqowqwhvbcdqmdw
+SECRET_KEY=change_this_to_something_random
+MONGODB_URI=mongodb+srv://errualmeida2005:LPeUzlZepxpVqT5q@cluster0.czrkk.mongodb.net/swasthai?retryWrites=true&w=majority&appName=Cluster0
+# LOCAL MONGODB URL
+# MONGODB_URI=mongodb://localhost:27017/swasthai

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SwasthAI • Doctors</title>
+    <meta name="description" content="Doctors directory with call/WhatsApp contact." />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { display: ["ui-sans-serif", "system-ui", "sans-serif"] },
+            colors: {
+              ink: { 950: "#070A0E", 900: "#0B1220", 800: "#101B2E" },
+              mint: { 50: "#E9FFF7", 100: "#D3FFF0", 300: "#74FBD3", 500: "#1EE6B6", 600: "#12CDA0" },
+              skyx: { 50: "#EBF8FF", 200: "#BFE9FF", 500: "#2FB5FF", 600: "#159BE6" },
+              rosex: { 500: "#FF4D7D" },
+            },
+            boxShadow: { glow: "0 0 0 1px rgba(255,255,255,.08), 0 18px 60px rgba(0,0,0,.45)", soft: "0 12px 40px rgba(0,0,0,.35)" },
+            keyframes: {
+              shimmer: { "0%": { backgroundPosition: "0% 50%" }, "100%": { backgroundPosition: "100% 50%" } },
+              pop: { "0%": { transform: "scale(.98)", opacity: "0" }, "100%": { transform: "scale(1)", opacity: "1" } },
+            },
+            animation: { shimmer: "shimmer 10s ease infinite", pop: "pop .35s ease-out both" },
+          },
+        },
+      };
+    </script>
+    <link rel="stylesheet" href="/static/styles.css?v={{ build_time }}" />
+  </head>
+  <body class="bg-ink-950 text-white antialiased selection:bg-mint-600/40 selection:text-white pb-24 md:pb-0">
+    <!-- Background -->
+    <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10">
+      <div class="absolute inset-0 bg-[radial-gradient(1200px_500px_at_15%_10%,rgba(47,181,255,.25),transparent_60%),radial-gradient(900px_500px_at_75%_15%,rgba(30,230,182,.23),transparent_60%),radial-gradient(800px_500px_at_55%_75%,rgba(255,77,125,.14),transparent_60%)]"></div>
+      <div class="absolute inset-0 opacity-60 bg-[linear-gradient(120deg,rgba(255,255,255,.08),transparent_40%,rgba(255,255,255,.08))] bg-[length:220%_220%] animate-shimmer"></div>
+      <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22600%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.75%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22600%22 height=%22600%22 filter=%22url(%23n)%22 opacity=%220.08%22/%3E%3C/svg%3E')] opacity-70 mix-blend-soft-light"></div>
+    </div>
+
+    <!-- Top nav -->
+    <header class="sticky top-0 z-50 backdrop-blur-xl bg-ink-950/65 border-b border-white/10">
+      <div class="mx-auto max-w-6xl px-4 sm:px-6">
+        <div class="flex items-center justify-between py-3">
+          <a href="{{ url_for('home') }}" class="group inline-flex items-center gap-2">
+            <span class="relative grid place-items-center h-9 w-9 rounded-xl bg-white/10 border border-white/15 shadow-soft">
+              <span class="h-3.5 w-3.5 rounded-full bg-gradient-to-br from-mint-500 to-skyx-500"></span>
+            </span>
+            <span class="font-semibold tracking-tight text-white/95">SwasthAI</span>
+            <span class="hidden sm:inline text-xs text-white/55 border border-white/10 rounded-full px-2 py-0.5">Smart healthcare</span>
+          </a>
+
+          <nav class="hidden md:flex items-center gap-1 text-sm text-white/75">
+            <a class="navlink" href="{{ url_for('home') }}">Home</a>
+            <a class="navlink" href="{{ url_for('chatbot_page') }}">Chatbot</a>
+            <a class="navlink" href="{{ url_for('hospitals_page') }}">Hospitals</a>
+            <a class="navlink" href="{{ url_for('doctors_page') }}">Doctors</a>
+            <a class="navlink" href="{{ url_for('schemes_page') }}">Schemes</a>
+          </nav>
+
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 mr-2 sm:mr-4">
+              <div class="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+                <span class="h-2 w-2 rounded-full bg-mint-500/90"></span>
+                <span class="text-white/85">Hello, {{ current_user.name or current_user.email.split('@')[0] }}</span>
+              </div>
+              <button id="profileBtn" class="h-9 w-9 rounded-full bg-white/10 border border-white/15 flex items-center justify-center hover:bg-white/20 transition group" title="View Profile">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="text-mint-500 group-hover:scale-110 transition duration-300">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                  <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"></circle>
+                </svg>
+              </button>
+              <a href="{{ url_for('logout') }}" class="btn-ghost text-xs px-3 py-1.5 h-auto">Logout</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 sm:px-6">
+      <section class="py-10 sm:py-14">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Doctors & Contact</h2>
+            <p class="section-subtitle">Browse available doctors and contact by call or WhatsApp.</p>
+          </div>
+          <a href="{{ url_for('home') }}" class="btn-ghost text-xs hidden sm:inline-flex">Back to home</a>
+        </div>
+
+        <div class="card reveal">
+          <div class="flex items-start sm:items-center justify-between gap-3">
+            <div>
+              <div class="text-sm text-white/70">Available doctors</div>
+              
+            </div>
+            <button id="refreshDoctorsBtn" class="btn-ghost">Refresh</button>
+          </div>
+          <div id="doctorsGrid" class="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </div>
+      </section>
+
+      <footer class="py-10 text-xs text-white/55">
+        <div class="border-t border-white/10 pt-6">
+          <div class="text-white/55">SwasthAI</div>
+        </div>
+      </footer>
+    </main>
+
+    <!-- Mobile bottom navigation -->
+    <nav id="bottomNav" class="bottom-nav md:hidden" aria-label="Bottom navigation">
+      <div class="bottom-nav-inner">
+        <a class="bottom-nav-link" href="{{ url_for('home') }}" data-path="/" aria-label="Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z" />
+          </svg>
+          <div class="label">Home</div>
+        </a>
+        <a class="bottom-nav-link" href="{{ url_for('chatbot_page') }}" data-path="/chatbot" aria-label="Chatbot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z" />
+          </svg>
+          <div class="label">Chat</div>
+        </a>
+        <a class="bottom-nav-link" href="{{ url_for('hospitals_page') }}" data-path="/hospitals" aria-label="Hospitals">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z" />
+            <path d="M12 11v-2M12 11h2M12 11H10M12 13v-2" />
+          </svg>
+          <div class="label">Hosp</div>
+        </a>
+        <a class="bottom-nav-link" href="{{ url_for('doctors_page') }}" data-path="/doctors" aria-label="Doctors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <div class="label">Docs</div>
+        </a>
+        <a class="bottom-nav-link" href="{{ url_for('schemes_page') }}" data-path="/schemes" aria-label="Schemes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2h9l3 3v17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+            <path d="M9 12h6M9 16h6M9 8h3" />
+          </svg>
+          <div class="label">Schemes</div>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Profile Sidebar -->
+    <div id="profileSidebar" class="fixed inset-y-0 left-0 z-[100] w-full sm:w-1/4 min-w-[300px] bg-ink-950/95 backdrop-blur-2xl border-r border-white/10 shadow-2xl transition-transform duration-500 -translate-x-full">
+      <div class="h-full flex flex-col p-6">
+        <div class="flex items-center justify-between mb-8">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-xl bg-mint-500/10 border border-mint-500/20 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="text-mint-500">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"></circle>
+              </svg>
+            </div>
+            <h2 class="text-lg font-bold">Your Profile</h2>
+          </div>
+          <button id="closeProfileBtn" class="h-8 w-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-auto space-y-6">
+          <div class="space-y-1">
+            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Full Name</div>
+            <div class="text-white/90 font-medium">{{ current_user.name }}</div>
+          </div>
+          <div class="space-y-1">
+            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Gmail</div>
+            <div class="text-white/90 font-medium text-xs break-all">{{ current_user.email }}</div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Blood Group</div>
+              <div class="text-white/90 font-medium">{{ current_user.blood_group }}</div>
+            </div>
+            <div class="space-y-1">
+              <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Age</div>
+              <div class="text-white/90 font-medium">{{ current_user.age }}</div>
+            </div>
+          </div>
+          <div class="space-y-1">
+            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Contact Number</div>
+            <div class="text-white/90 font-medium">{{ current_user.contact_no }}</div>
+          </div>
+          <div class="space-y-1">
+            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Area / Location</div>
+            <div class="text-white/90 font-medium leading-relaxed text-sm">{{ current_user.area }}</div>
+          </div>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-white/10">
+          <a href="{{ url_for('logout') }}" class="btn-ghost w-full justify-center text-xs">Sign Out Account</a>
+        </div>
+      </div>
+    </div>
+    <div id="profileOverlay" class="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-500"></div>
+
+    <script src="/static/app.js?v={{ build_time }}"></script>
+  </body>
+</html>
+

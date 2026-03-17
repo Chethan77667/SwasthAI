@@ -69,7 +69,7 @@
     </script>
     <link rel="stylesheet" href="/static/styles.css?v={{ build_time }}" />
   </head>
-  <body class="bg-ink-950 text-white antialiased selection:bg-mint-600/40 selection:text-white">
+  <body class="bg-ink-950 text-white antialiased selection:bg-mint-600/40 selection:text-white pb-24 md:pb-0">
     <!-- Background -->
     <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10">
       <div class="absolute inset-0 bg-[radial-gradient(1200px_500px_at_15%_10%,rgba(47,181,255,.25),transparent_60%),radial-gradient(900px_500px_at_75%_15%,rgba(30,230,182,.23),transparent_60%),radial-gradient(800px_500px_at_55%_75%,rgba(255,77,125,.14),transparent_60%)]"></div>
@@ -80,6 +80,7 @@
     <!-- Top nav -->
     <header class="sticky top-0 z-50 backdrop-blur-xl bg-ink-950/65 border-b border-white/10">
       <div class="mx-auto max-w-6xl px-4 sm:px-6">
+<<<<<<< HEAD
         <div class="flex items-center justify-between gap-3 py-3 md:grid md:grid-cols-[auto,1fr,auto] md:items-center md:py-4">
           <!-- Brand (logo only, no extra text) -->
           <a href="#top" class="group inline-flex items-center min-w-0">
@@ -97,18 +98,38 @@
             <a class="navlink" href="#finder">Hospitals</a>
             <a class="navlink" href="#doctors">Doctors</a>
             <a class="navlink" href="#schemes">Schemes</a>
+=======
+        <div class="flex items-center justify-between py-3">
+          <a href="{{ url_for('home') }}" class="group inline-flex items-center gap-2">
+            <span class="relative grid place-items-center h-9 w-9 rounded-xl bg-white/10 border border-white/15 shadow-soft">
+              <span class="h-3.5 w-3.5 rounded-full bg-gradient-to-br from-mint-500 to-skyx-500"></span>
+            </span>
+            <span class="font-semibold tracking-tight text-white/95">SwasthAI</span>
+            <span class="hidden sm:inline text-xs text-white/55 border border-white/10 rounded-full px-2 py-0.5">Smart healthcare</span>
+          </a>
+
+          <nav class="hidden md:flex items-center gap-1 text-sm text-white/75">
+            <a class="navlink" href="{{ url_for('home') }}">Home</a>
+            <a class="navlink" href="{{ url_for('chatbot_page') }}">Chatbot</a>
+            <a class="navlink" href="{{ url_for('hospitals_page') }}">Hospitals</a>
+            <a class="navlink" href="{{ url_for('doctors_page') }}">Doctors</a>
+            <a class="navlink" href="{{ url_for('schemes_page') }}">Schemes</a>
+>>>>>>> 62cb8e42bf55df7c4867f0b9b940595aeef3cea7
           </nav>
 
           <div class="flex items-center gap-2">
             {% if current_user.is_authenticated %}
-              <div class="flex items-center gap-3 mr-2 sm:mr-4">
+              <div class="flex items-center gap-2 mr-2 sm:mr-4">
+                <div class="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+                  <span class="h-2 w-2 rounded-full bg-mint-500/90"></span>
+                  <span class="text-white/85">Hello, {{ current_user.name or current_user.email.split('@')[0] }}</span>
+                </div>
                 <button id="profileBtn" class="h-9 w-9 rounded-full bg-white/10 border border-white/15 flex items-center justify-center hover:bg-white/20 transition group" title="View Profile">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="text-mint-500 group-hover:scale-110 transition duration-300">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
                     <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"></circle>
                   </svg>
                 </button>
-                <span class="hidden sm:inline text-xs text-mint-500/80 font-medium">Hello, {{ current_user.name or current_user.email.split('@')[0] }}</span>
                 <a href="{{ url_for('logout') }}" class="btn-ghost text-xs px-3 py-1.5 h-auto">Logout</a>
               </div>
             {% else %}
@@ -117,40 +138,11 @@
                 <a href="{{ url_for('signup') }}" class="btn-primary text-xs px-4 py-1.5 h-auto">Sign up</a>
               </div>
             {% endif %}
-            <a href="#chat" class="hidden sm:inline-flex btn-primary">Start chat</a>
-            <button id="menuBtn" class="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition" aria-label="Open menu">
-              <span class="i-bars"></span>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-              </svg>
-            </button>
+            <a href="{{ url_for('chatbot_page') }}" class="hidden sm:inline-flex btn-primary">Start chat</a>
           </div>
         </div>
       </div>
 
-      <!-- Mobile drawer -->
-      <div id="mobileMenu" class="md:hidden hidden">
-        <div class="mx-auto max-w-6xl px-4 sm:px-6 pb-4">
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div class="grid gap-1 text-sm text-white/80">
-              <a class="navlink block" href="#chat">Chatbot</a>
-              <a class="navlink block" href="#finder">Nearby hospitals</a>
-              <a class="navlink block" href="#doctors">Doctors</a>
-              <a class="navlink block" href="#schemes">Govt schemes</a>
-            </div>
-            <div class="mt-3 flex flex-col gap-2">
-              {% if current_user.is_authenticated %}
-                <div class="py-2 px-1 text-[10px] text-white/30 uppercase font-bold tracking-widest text-center">{{ current_user.email }}</div>
-                <a href="{{ url_for('logout') }}" class="btn-ghost w-full justify-center">Logout</a>
-              {% else %}
-                <a href="{{ url_for('login') }}" class="btn-ghost w-full justify-center">Log in</a>
-                <a href="{{ url_for('signup') }}" class="btn-primary w-full justify-center">Sign up</a>
-              {% endif %}
-              <button id="closeMenuBtn" class="btn-ghost w-full justify-center opacity-50 text-[10px]">Close menu</button>
-            </div>
-          </div>
-        </div>
-      </div>
     </header>
 
     <main id="top" class="mx-auto max-w-6xl px-4 sm:px-6">
@@ -170,8 +162,8 @@
             </p>
 
             <div class="mt-6 flex flex-col sm:flex-row gap-3">
-              <a href="#chat" class="btn-primary justify-center">Try the chatbot</a>
-              <a href="#finder" class="btn-ghost justify-center">Find hospitals</a>
+              <a href="{{ url_for('chatbot_page') }}" class="btn-primary justify-center">Try the chatbot</a>
+              <a href="{{ url_for('hospitals_page') }}" class="btn-ghost justify-center">Find hospitals</a>
             </div>
 
             <div class="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -200,7 +192,7 @@
                   <div class="text-sm text-white/70">Quick start</div>
                   <div class="text-lg font-medium">Describe your symptoms</div>
                 </div>
-                <div class="badge">Demo</div>
+                
               </div>
               <div class="mt-4 grid gap-3">
                 <button class="prompt-chip" data-prompt="I have fever and headache since yesterday.">“I have fever and headache…”</button>
@@ -229,209 +221,84 @@
         </div>
       </section>
 
-      <!-- Chatbot -->
-      <section id="chat" class="py-10 sm:py-14 scroll-mt-24">
+      <!-- Explore (links to detailed pages) -->
+      <section class="pb-12 sm:pb-16">
         <div class="section-head">
           <div>
-            <h2 class="section-title">AI Chatbot</h2>
-            <p class="section-subtitle">Describe symptoms to get possible causes, precautions, and when to seek care.</p>
-          </div>
-          <div class="hidden sm:flex items-center gap-2">
-            <span class="pill">Symptom guidance</span>
-            <span class="pill">Precautions</span>
-            <span class="pill">Doctor advice</span>
+            <h2 class="section-title">Explore</h2>
+            <p class="section-subtitle">Open any feature to see the full detailed page.</p>
           </div>
         </div>
 
-        <div class="grid lg:grid-cols-12 gap-4 lg:gap-6">
-          <div class="lg:col-span-7">
-            <div class="card reveal">
-              <div class="flex items-center justify-between gap-3">
-                <div class="text-sm text-white/70">Chat</div>
-                <div class="flex items-center gap-2">
-                  <select id="languageSelect" class="bg-white/5 border border-white/10 rounded-lg text-[10px] text-white/50 px-2 py-1 outline-none focus:border-mint-500/50 transition">
-                    <option value="English" selected>English</option>
-                    <option value="Hindi">Hindi / हिंदी</option>
-                    <option value="Kannada">Kannada / ಕನ್ನಡ</option>
-                  </select>
-                  <div class="text-xs text-white/55 hidden sm:block">Not a diagnosis</div>
-                </div>
-              </div>
-              <div id="chatLog" class="mt-4 chat-log" aria-live="polite"></div>
-              <div id="imagePreview" class="mt-2 hidden">
-                <div class="relative inline-block">
-                  <img id="previewImg" class="h-20 w-20 rounded-xl object-cover border border-white/20" />
-                  <button id="removeImgBtn" type="button" class="absolute -top-2 -right-2 bg-rosex-500 text-white rounded-full p-1 shadow-lg">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                  </button>
-                </div>
-              </div>
-              <form id="chatForm" class="mt-4 flex gap-2">
-                <div class="relative flex-1">
-                  <input id="chatInput" class="input pr-10" placeholder="Type symptoms or upload medicine image…" autocomplete="off" />
-                  <label for="imageInput" class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-1.5 text-white/50 hover:text-white transition">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                    <input id="imageInput" type="file" accept="image/*" class="hidden" />
-                  </label>
-                </div>
-                <button class="btn-primary shrink-0" type="submit">Send</button>
-              </form>
-              <div class="mt-3 text-xs text-white/55">
-                Emergency warning: if severe symptoms or breathing difficulty, seek urgent medical care.
-              </div>
-            </div>
-          </div>
-          <div class="lg:col-span-5">
-            <div class="card reveal">
-              <div class="text-sm text-white/70">What you’ll get</div>
-              <ul class="mt-3 grid gap-2 text-sm text-white/75">
-                <li class="feature-line">
-                  <span class="dot dot-mint"></span>
-                  Possible causes (general, non-diagnostic)
-                </li>
-                <li class="feature-line">
-                  <span class="dot dot-sky"></span>
-                  Simple home precautions
-                </li>
-                <li class="feature-line">
-                  <span class="dot dot-rose"></span>
-                  “Seek care if…” red flags
-                </li>
-              </ul>
-              <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div class="text-xs text-white/60">Try a prompt</div>
-                <div class="mt-2 flex flex-wrap gap-2">
-                  <button class="chip" data-prompt="I have fever and body pain.">Fever + body pain</button>
-                  <button class="chip" data-prompt="Chest tightness and sweating.">Chest tightness</button>
-                  <button class="chip" data-prompt="Vomiting and diarrhea since morning.">Vomiting + diarrhea</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Hospital finder -->
-      <section id="finder" class="py-10 sm:py-14 scroll-mt-24">
-        <div class="section-head">
-          <div>
-            <h2 class="section-title">Nearby Hospital Finder</h2>
-            <p class="section-subtitle">Search any place (village/city/pincode) or use your GPS to find nearby hospitals.</p>
-          </div>
-          <span class="pill">Maps</span>
-        </div>
-
-        <div class="grid lg:grid-cols-12 gap-4 lg:gap-6 items-stretch">
-          <div class="lg:col-span-5">
-            <div class="card reveal h-full">
-              <div class="text-sm text-white/70">Find near you</div>
-              <div class="mt-3 grid gap-2">
-                <div class="grid gap-2">
-                  <input id="placeInput" class="input" placeholder="Search location (e.g., 'Kundapura', '560001')" autocomplete="off" />
-                  <button id="placeSearchBtn" class="btn-ghost w-full justify-center">Search hospitals at this location</button>
-                </div>
-                <button id="locBtn" class="btn-primary w-full justify-center">Use my current location</button>
-                <button id="openMapsBtn" class="btn-ghost w-full justify-center" disabled>Open Google Maps results</button>
-              </div>
-              <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div class="text-xs text-white/60">Detected location</div>
-                <div id="locStatus" class="mt-1 text-sm text-white/80">Not yet detected.</div>
-                <div class="mt-3 text-xs text-white/55">Tip: If location is blocked, allow it in your browser settings.</div>
-              </div>
-              <div class="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div class="flex items-center justify-between gap-3">
-                  <div class="text-xs text-white/60">Nearby hospitals</div>
-                  <div id="apiBadge" class="badge">API auto</div>
-                </div>
-                <div id="hospitalsList" class="mt-3 grid gap-2 text-sm text-white/75">
-                  <div class="text-white/55 text-sm">Search a location to see results.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="lg:col-span-7">
-            <div class="card reveal h-full overflow-hidden">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-sm text-white/70">Map preview</div>
-                  <div class="text-xs text-white/55">Preview updates when you search or detect location.</div>
-                </div>
-                <div class="badge">Google Maps</div>
-              </div>
-              <div class="mt-4 aspect-[16/10] w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-                <iframe
-                  id="mapFrame"
-                  title="Google Maps preview"
-                  class="h-full w-full"
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade"
-                  src="https://www.google.com/maps?q=hospital%20near%20me&output=embed"
-                ></iframe>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Doctors -->
-      <section id="doctors" class="py-10 sm:py-14 scroll-mt-24">
-        <div class="section-head">
-          <div>
-            <h2 class="section-title">Doctors & Contact</h2>
-            <p class="section-subtitle">Browse available doctors and contact by call or WhatsApp.</p>
-          </div>
-          <span class="pill">Contact</span>
-        </div>
-
-        <div class="card reveal">
-          <div class="flex items-start sm:items-center justify-between gap-3">
-            <div>
-              <div class="text-sm text-white/70">Available doctors</div>
-              <div class="text-xs text-white/55">Demo data from backend (replace with MongoDB later).</div>
-            </div>
-            <button id="refreshDoctorsBtn" class="btn-ghost">Refresh</button>
-          </div>
-          <div id="doctorsGrid" class="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-        </div>
-      </section>
-
-      <!-- Schemes -->
-      <section id="schemes" class="py-10 sm:py-14 scroll-mt-24">
-        <div class="section-head">
-          <div>
-            <h2 class="section-title">Government Health Schemes</h2>
-            <p class="section-subtitle">Updated awareness cards for common programs and how to use them.</p>
-          </div>
-          <span class="pill">Awareness</span>
-        </div>
-
-        <div class="card reveal">
-          <div class="flex items-start sm:items-center justify-between gap-3">
-            <div>
-              <div class="text-sm text-white/70">Schemes</div>
-              <div class="text-xs text-white/55">Demo list from backend (can be made dynamic later).</div>
-            </div>
-            <button id="refreshSchemesBtn" class="btn-ghost">Refresh</button>
-          </div>
-          <div id="schemesGrid" class="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <a href="{{ url_for('chatbot_page') }}" class="mini-card reveal hover:bg-white/5 transition">
+            <div class="mini-title">Chatbot</div>
+            <div class="mini-note">Ask symptoms or upload a medicine image for guidance.</div>
+            <div class="mt-3 text-xs text-skyx-200">Open Chatbot ↗</div>
+          </a>
+          <a href="{{ url_for('hospitals_page') }}" class="mini-card reveal hover:bg-white/5 transition">
+            <div class="mini-title">Hospitals</div>
+            <div class="mini-note">Search by place or use GPS to find nearby hospitals.</div>
+            <div class="mt-3 text-xs text-skyx-200">Open Hospitals ↗</div>
+          </a>
+          <a href="{{ url_for('doctors_page') }}" class="mini-card reveal hover:bg-white/5 transition">
+            <div class="mini-title">Doctors</div>
+            <div class="mini-note">Call or WhatsApp doctors from the directory.</div>
+            <div class="mt-3 text-xs text-skyx-200">Open Doctors ↗</div>
+          </a>
+          <a href="{{ url_for('schemes_page') }}" class="mini-card reveal hover:bg-white/5 transition">
+            <div class="mini-title">Schemes</div>
+            <div class="mini-note">Learn about government health schemes and eligibility.</div>
+            <div class="mt-3 text-xs text-skyx-200">Open Schemes ↗</div>
+          </a>
         </div>
       </section>
 
       <footer class="py-10 text-xs text-white/55">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-white/10 pt-6">
-          <div>
-            <div class="text-white/75">SwasthAI</div>
-            <div class="mt-1">Built with HTML, Tailwind CSS, JavaScript, and Flask.</div>
-          </div>
-          <div class="text-white/55">
-            <span class="inline-flex items-center gap-2">
-              <span class="h-2 w-2 rounded-full bg-mint-500"></span>
-              Build: {{ build_time }}
-            </span>
-          </div>
+        <div class="border-t border-white/10 pt-6">
+          <div class="text-white/55">SwasthAI</div>
         </div>
       </footer>
     </main>
+
+    <!-- Mobile bottom navigation -->
+    <nav id="bottomNav" class="bottom-nav md:hidden" aria-label="Bottom navigation">
+      <div class="bottom-nav-inner">
+        <a class="bottom-nav-link" href="{{ url_for('home') }}" data-path="/" aria-label="Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z" />
+          </svg>
+          <div class="label">Home</div>
+        </a>
+        <a class="bottom-nav-link" href="{{ url_for('chatbot_page') }}" data-path="/chatbot" aria-label="Chatbot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z" />
+          </svg>
+          <div class="label">Chat</div>
+        </a>
+        <a class="bottom-nav-link" href="{{ url_for('hospitals_page') }}" data-path="/hospitals" aria-label="Hospitals">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z" />
+            <path d="M12 11v-2M12 11h2M12 11H10M12 13v-2" />
+          </svg>
+          <div class="label">Hosp</div>
+        </a>
+        <a class="bottom-nav-link" href="{{ url_for('doctors_page') }}" data-path="/doctors" aria-label="Doctors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <div class="label">Docs</div>
+        </a>
+        <a class="bottom-nav-link" href="{{ url_for('schemes_page') }}" data-path="/schemes" aria-label="Schemes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2h9l3 3v17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+            <path d="M9 12h6M9 16h6M9 8h3" />
+          </svg>
+          <div class="label">Schemes</div>
+        </a>
+      </div>
+    </nav>
 
     <!-- Profile Sidebar -->
     <div id="profileSidebar" class="fixed inset-y-0 left-0 z-[100] w-full sm:w-1/4 min-w-[300px] bg-ink-950/95 backdrop-blur-2xl border-r border-white/10 shadow-2xl transition-transform duration-500 -translate-x-full">
@@ -451,10 +318,10 @@
           </button>
         </div>
 
-        <div class="flex-1 overflow-auto space-y-6">
+        <div class="flex-1 overflow-auto space-y-6" id="profileViewMode">
           <div class="space-y-1">
             <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Full Name</div>
-            <div class="text-white/90 font-medium">{{ current_user.name }}</div>
+            <div class="text-white/90 font-medium" id="view_name">{{ current_user.name or 'Not provided' }}</div>
           </div>
           <div class="space-y-1">
             <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Gmail</div>
@@ -463,22 +330,86 @@
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
               <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Blood Group</div>
-              <div class="text-white/90 font-medium">{{ current_user.blood_group }}</div>
+              <div class="text-white/90 font-medium" id="view_blood_group">{{ current_user.blood_group or '--' }}</div>
             </div>
             <div class="space-y-1">
               <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Age</div>
-              <div class="text-white/90 font-medium">{{ current_user.age }}</div>
+              <div class="text-white/90 font-medium" id="view_age">{{ current_user.age or '--' }}</div>
             </div>
           </div>
           <div class="space-y-1">
             <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Contact Number</div>
-            <div class="text-white/90 font-medium">{{ current_user.contact_no }}</div>
+            <div class="text-white/90 font-medium" id="view_contact_no">{{ current_user.contact_no or 'Not provided' }}</div>
           </div>
           <div class="space-y-1">
             <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest">Area / Location</div>
-            <div class="text-white/90 font-medium leading-relaxed text-sm">{{ current_user.area }}</div>
+            <div class="text-white/90 font-medium leading-relaxed text-sm" id="view_area">{{ current_user.area or 'Not provided' }}</div>
           </div>
+
+          <div class="pt-2">
+            <div class="text-[10px] text-white/40 uppercase font-bold tracking-widest mb-3">Account Type</div>
+            <div class="flex p-1 rounded-xl bg-white/5 border border-white/10 relative">
+              <div id="typeSlider" class="absolute inset-y-1 left-1 w-[calc(50%-4px)] bg-mint-500 rounded-lg shadow-lg transition-transform duration-300 {{ 'translate-x-full' if current_user.user_type == 'donor' else '' }}"></div>
+              <button 
+                onclick="updateAccountType('user')" 
+                class="flex-1 py-1.5 text-xs font-bold z-10 transition duration-300 {{ 'text-ink-950' if current_user.user_type == 'user' else 'text-white/50 hover:text-white' }}"
+                id="userTypeBtn"
+              >
+                User
+              </button>
+              <button 
+                onclick="updateAccountType('donor')" 
+                class="flex-1 py-1.5 text-xs font-bold z-10 transition duration-300 {{ 'text-ink-950' if current_user.user_type == 'donor' else 'text-white/50 hover:text-white' }}"
+                id="donorTypeBtn"
+              >
+                Donor
+              </button>
+            </div>
+            <p id="typeDesc" class="mt-2 text-[10px] text-white/30 text-center italic">
+              {{ 'Helping others with aid' if current_user.user_type == 'donor' else 'Seeking healthcare help' }}
+            </p>
+          </div>
+
+          <button onclick="toggleProfileEdit(true)" class="btn-ghost w-full justify-center text-xs mt-4">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit Personal Details
+          </button>
         </div>
+
+        <!-- Edit Mode (Hidden by default) -->
+        <form class="flex-1 overflow-auto space-y-4 hidden" id="profileEditMode" onsubmit="saveProfileDetails(event)">
+          <div class="space-y-1">
+            <label class="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Full Name</label>
+            <input type="text" name="name" class="input py-2 text-sm" value="{{ current_user.name or '' }}" required />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Blood Group</label>
+              <select name="blood_group" class="input py-2 text-sm select-icon" required>
+                {% for bg in ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] %}
+                  <option value="{{ bg }}" {{ 'selected' if current_user.blood_group == bg }}>{{ bg }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Age</label>
+              <input type="number" name="age" class="input py-2 text-sm" value="{{ current_user.age or '' }}" min="1" max="120" required />
+            </div>
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Contact Number</label>
+            <input type="tel" name="contact_no" class="input py-2 text-sm" value="{{ current_user.contact_no or '' }}" required />
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Area / Location</label>
+            <textarea name="area" class="input py-2 text-sm min-h-[80px]" required>{{ current_user.area or '' }}</textarea>
+          </div>
+
+          <div class="flex gap-2 pt-4">
+            <button type="button" onclick="toggleProfileEdit(false)" class="btn-ghost flex-1 justify-center text-xs">Cancel</button>
+            <button type="submit" id="saveProfileBtn" class="btn-primary flex-1 justify-center text-xs">Save Changes</button>
+          </div>
+        </form>
 
         <div class="mt-8 pt-6 border-t border-white/10">
           <a href="{{ url_for('logout') }}" class="btn-ghost w-full justify-center text-xs">Sign Out Account</a>
@@ -486,6 +417,16 @@
       </div>
     </div>
     <div id="profileOverlay" class="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-500"></div>
+
+    <style>
+      .select-icon {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 0.8rem;
+      }
+    </style>
 
     <script src="/static/app.js?v={{ build_time }}"></script>
 

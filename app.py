@@ -9,21 +9,22 @@ from flask import Flask, jsonify, render_template, request, redirect, url_for, f
 import requests
 import google.generativeai as genai
 from dotenv import load_dotenv
-from flask_sqlalchemy import SQLAlchemy
+from bson.objectid import ObjectId
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
+from pymongo import MongoClient
+from pymongo.errors import DuplicateKeyError
 
-# Load environment variables from .env
-load_dotenv()
+# Load environment variables from .env or env
+if os.path.exists("env"):
+    load_dotenv("env")
+else:
+    load_dotenv()
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "dev-secret-key-123")
-# Use current directory for the database to keep it simple and visible
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'swasthai.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Mail configuration
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -33,29 +34,84 @@ app.config['MAIL_USERNAME'] = os.environ.get("MAIL_USERNAME")
 app.config['MAIL_PASSWORD'] = os.environ.get("MAIL_PASSWORD")
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get("MAIL_USERNAME")
 
-db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 mail = Mail(app)
 
-# User Model
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(60), nullable=False)
-    is_verified = db.Column(db.Boolean, default=False)
-    # Profile fields
-    name = db.Column(db.String(100), nullable=True)
-    blood_group = db.Column(db.String(10), nullable=True)
-    area = db.Column(db.String(200), nullable=True)
-    age = db.Column(db.Integer, nullable=True)
-    contact_no = db.Column(db.String(20), nullable=True)
-    is_profile_complete = db.Column(db.Boolean, default=False)
+# --- MongoDB (users/auth/profile) ---
+_mongo: MongoClient | None = None
+_mongo_initialized = False
+
+
+def _mongo_client() -> MongoClient:
+    global _mongo
+    if _mongo is None:
+        uri = (os.getenv("MONGODB_URI") or "mongodb://localhost:27017").strip()
+        _mongo = MongoClient(uri, serverSelectionTimeoutMS=3000)
+    return _mongo
+
+
+def _mongo_db_name() -> str:
+    return (os.getenv("MONGODB_DB") or "swasthai").strip()
+
+
+def _users_col():
+    return _mongo_client()[_mongo_db_name()]["users"]
+
+
+def _init_mongo() -> None:
+    global _mongo_initialized
+    if _mongo_initialized:
+        return
+    # ensure connection is attempted and indexes exist
+    _mongo_client().admin.command("ping")
+    _users_col().create_index("email", unique=True)
+    _mongo_initialized = True
+
+
+@app.before_request
+def _ensure_mongo_ready():
+    _init_mongo()
+
+
+class User(UserMixin):
+    def __init__(self, doc: dict):
+        self._doc = doc
+        self.id = str(doc["_id"])
+        self.email = doc.get("email")
+        self.password = doc.get("password")
+        self.is_verified = bool(doc.get("is_verified", False))
+        self.name = doc.get("name")
+        self.blood_group = doc.get("blood_group")
+        self.area = doc.get("area")
+        self.age = doc.get("age")
+        self.contact_no = doc.get("contact_no")
+        self.is_profile_complete = bool(doc.get("is_profile_complete", False))
+        self.user_type = doc.get("user_type") or "user"
+
+    @staticmethod
+    def from_email(email: str) -> "User | None":
+        doc = _users_col().find_one({"email": email})
+        return User(doc) if doc else None
+
+    @staticmethod
+    def from_id(user_id: str) -> "User | None":
+        try:
+            oid = ObjectId(user_id)
+        except Exception:
+            return None
+        doc = _users_col().find_one({"_id": oid})
+        return User(doc) if doc else None
+
+    def refresh(self) -> None:
+        doc = _users_col().find_one({"_id": ObjectId(self.id)})
+        if doc:
+            self.__init__(doc)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return User.from_id(user_id)
 
 # Configure Gemini API
 api_key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -192,9 +248,31 @@ def _get_gemini_response(message: str, image_data: bytes | None = None, mime_typ
 @app.get("/")
 @login_required
 def home():
-    if not current_user.is_profile_complete:
-        return redirect(url_for('profile_setup'))
     return render_template("index.html", build_time=datetime.utcnow().isoformat() + "Z")
+
+
+@app.get("/chatbot")
+@login_required
+def chatbot_page():
+    return render_template("chatbot.html", build_time=datetime.utcnow().isoformat() + "Z")
+
+
+@app.get("/hospitals")
+@login_required
+def hospitals_page():
+    return render_template("hospitals.html", build_time=datetime.utcnow().isoformat() + "Z")
+
+
+@app.get("/doctors")
+@login_required
+def doctors_page():
+    return render_template("doctors.html", build_time=datetime.utcnow().isoformat() + "Z")
+
+
+@app.get("/schemes")
+@login_required
+def schemes_page():
+    return render_template("schemes.html", build_time=datetime.utcnow().isoformat() + "Z")
 
 @app.route("/profile-setup", methods=["GET", "POST"])
 @login_required
@@ -203,14 +281,17 @@ def profile_setup():
         return redirect(url_for('home'))
         
     if request.method == "POST":
-        current_user.name = request.form.get("name")
-        current_user.blood_group = request.form.get("blood_group")
-        current_user.area = request.form.get("area")
-        current_user.age = int(request.form.get("age") or 0)
-        current_user.contact_no = request.form.get("contact_no")
-        current_user.is_profile_complete = True
-        
-        db.session.commit()
+        update = {
+            "name": request.form.get("name"),
+            "blood_group": request.form.get("blood_group"),
+            "area": request.form.get("area"),
+            "age": int(request.form.get("age") or 0),
+            "contact_no": request.form.get("contact_no"),
+            "user_type": request.form.get("user_type", "user"),
+            "is_profile_complete": True,
+        }
+        _users_col().update_one({"_id": ObjectId(current_user.id)}, {"$set": update})
+        current_user.refresh()
         flash("Profile completed successfully!", "success")
         return redirect(url_for('home'))
         
@@ -221,15 +302,41 @@ def signup():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     if request.method == "POST":
-        email = request.form.get("email")
-        password = request.form.get("password")
+        email = (request.form.get("email") or "").strip().lower()
+        password = (request.form.get("password") or "").strip()
+        if "@" not in email or "." not in email:
+            flash("Please enter a valid email address", "danger")
+            return redirect(url_for('signup'))
+        if len(password) < 6:
+            flash("Password must be at least 6 characters", "danger")
+            return redirect(url_for('signup'))
         
-        user_exists = User.query.filter_by(email=email).first()
+        user_exists = User.from_email(email)
         if user_exists:
             flash("Email already registered", "danger")
             return redirect(url_for('signup'))
         
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
+        # If mail isn't configured, allow dev signup without OTP.
+        if not (app.config.get("MAIL_USERNAME") and app.config.get("MAIL_PASSWORD")):
+            _users_col().insert_one(
+                {
+                    "email": email,
+                    "password": hashed_pw,
+                    "is_verified": True,
+                    "name": None,
+                    "blood_group": None,
+                    "area": None,
+                    "age": None,
+                    "contact_no": None,
+                    "is_profile_complete": False,
+                    "user_type": "user",
+                    "created_at": datetime.utcnow(),
+                }
+            )
+            flash("Account created. Please login.", "success")
+            return redirect(url_for('login'))
+
         # Store temporary data in session for OTP verification
         session['signup_data'] = {'email': email, 'password': hashed_pw}
         
@@ -256,9 +363,25 @@ def verify_otp():
         user_otp = request.form.get("otp")
         if user_otp == session.get('otp'):
             data = session['signup_data']
-            user = User(email=data['email'], password=data['password'], is_verified=True)
-            db.session.add(user)
-            db.session.commit()
+            try:
+                _users_col().insert_one(
+                    {
+                        "email": data["email"],
+                        "password": data["password"],
+                        "is_verified": True,
+                        "name": None,
+                        "blood_group": None,
+                        "area": None,
+                        "age": None,
+                        "contact_no": None,
+                        "is_profile_complete": False,
+                        "user_type": "user",
+                        "created_at": datetime.utcnow(),
+                    }
+                )
+            except DuplicateKeyError:
+                flash("Email already registered", "danger")
+                return redirect(url_for('signup'))
             session.pop('otp')
             session.pop('signup_data')
             flash("Registration successful! Please login.", "success")
@@ -273,14 +396,14 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     if request.method == "POST":
-        email = request.form.get("email")
-        password = request.form.get("password")
-        user = User.query.filter_by(email=email).first()
+        email = (request.form.get("email") or "").strip().lower()
+        password = (request.form.get("password") or "").strip()
+        user = User.from_email(email)
         if user and bcrypt.check_password_hash(user.password, password):
             login_user(user)
             return redirect(url_for('home'))
         else:
-            flash("Invalid email or password", "danger")
+            flash("Invalid email or password (or account not created yet)", "danger")
     return render_template("login.html")
 
 @app.route("/forgot-password", methods=["GET", "POST"])
@@ -289,11 +412,15 @@ def forgot_password():
         return redirect(url_for('home'))
         
     if request.method == "POST":
-        email = request.form.get("email")
-        user = User.query.filter_by(email=email).first()
+        email = (request.form.get("email") or "").strip().lower()
+        user = User.from_email(email)
         
         if not user:
             flash("No account found with that email", "danger")
+            return redirect(url_for('forgot_password'))
+
+        if not (app.config.get("MAIL_USERNAME") and app.config.get("MAIL_PASSWORD")):
+            flash("Password reset OTP email is not configured on this server.", "danger")
             return redirect(url_for('forgot_password'))
             
         otp = "".join(random.choices(string.digits, k=6))
@@ -320,7 +447,7 @@ def verify_forgot_otp():
         user_otp = request.form.get("otp")
         if user_otp == session.get('forgot_otp'):
             email = session['forgot_email']
-            user = User.query.filter_by(email=email).first()
+            user = User.from_email(email)
             if user:
                 login_user(user)
                 session.pop('forgot_otp')
@@ -336,6 +463,33 @@ def verify_forgot_otp():
 def logout():
     logout_user()
     return redirect(url_for('home'))
+
+@app.post("/update-user-type")
+@login_required
+def update_user_type():
+    data = request.get_json()
+    new_type = data.get("user_type")
+    if new_type in ["user", "donor"]:
+        _users_col().update_one({"_id": ObjectId(current_user.id)}, {"$set": {"user_type": new_type}})
+        current_user.refresh()
+        return jsonify({"success": True, "user_type": new_type})
+    return jsonify({"success": False, "error": "Invalid user type"}), 400
+
+@app.post("/api/update-profile")
+@login_required
+def update_profile():
+    data = request.get_json()
+    update = {
+        "name": data.get("name"),
+        "blood_group": data.get("blood_group"),
+        "area": data.get("area"),
+        "age": int(data.get("age") or 0),
+        "contact_no": data.get("contact_no"),
+        "is_profile_complete": True,
+    }
+    _users_col().update_one({"_id": ObjectId(current_user.id)}, {"$set": update})
+    current_user.refresh()
+    return jsonify({"success": True})
 
 
 @app.post("/api/chat")
@@ -506,5 +660,5 @@ def nearby_hospitals():
 
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()
+        _init_mongo()
     app.run(host="0.0.0.0", port=5000, debug=True)

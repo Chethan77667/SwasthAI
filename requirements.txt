@@ -2,7 +2,7 @@ Flask>=3.0.0
 requests>=2.32.0
 google-generativeai>=0.4.0
 python-dotenv
-flask-sqlalchemy
 flask-login
 flask-bcrypt
 Flask-Mail
+pymongo>=4.8.0
