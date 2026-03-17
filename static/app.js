@@ -104,6 +104,11 @@ function nowLabel() {
 
 function appendMessage({ role, html, imageSrc }) {
   const log = $("#chatLog");
+  if (!log) return;
+  appendMessageToLog(log, { role, html, imageSrc });
+}
+
+function appendMessageToLog(log, { role, html, imageSrc }) {
   const wrap = document.createElement("div");
   wrap.className = "msg";
   
@@ -120,37 +125,162 @@ function appendMessage({ role, html, imageSrc }) {
   log.scrollTop = log.scrollHeight;
 }
 
+function isNewFormat(reply) {
+  return reply && (typeof reply.type === "string" || typeof reply.title === "string" || Array.isArray(reply.points));
+}
+
+function normalizeReply(reply) {
+  if (isNewFormat(reply)) {
+    return {
+      type: reply.type || "general",
+      title: reply.title || "SwasthAI",
+      description: reply.description || "",
+      points: Array.isArray(reply.points) ? reply.points : [],
+      action: reply.action || "",
+      warning: reply.warning || "",
+    };
+  }
+
+  // Backward-compat (older schema)
+  return {
+    type: "medical",
+    title: reply?.medicine_name || "Medical Guidance",
+    description: reply?.dosage || "",
+    points: Array.isArray(reply?.uses) ? reply.uses : [],
+    action: "",
+    warning: reply?.warnings || "This information is for guidance only. Consult a qualified doctor for medical advice.",
+  };
+}
+
 function formatAssistantReply(reply) {
-  const uses = (reply.uses || []).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
-  const sideEffects = (reply.side_effects || []).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
+  const r = normalizeReply(reply || {});
+  const pts = (r.points || []).slice(0, 5).map((x) => `<div class="li">${escapeHtml(x)}</div>`).join("");
 
   return `
-    <div class="font-semibold text-mint-300 font-display text-lg">${escapeHtml(reply.medicine_name || "Medical Guidance")}</div>
-    <div class="mt-2 text-white/90 leading-relaxed">${escapeHtml(reply.dosage || "")}</div>
+    <div class="flex items-center justify-between gap-3">
+      <div class="font-semibold text-mint-300 font-display text-lg">${escapeHtml(r.title || "SwasthAI")}</div>
+      <div class="badge">${escapeHtml((r.type || "general").toLowerCase())}</div>
+    </div>
+    ${r.description ? `<div class="mt-2 text-white/90 leading-relaxed">${escapeHtml(r.description)}</div>` : ""}
     
-    ${uses ? `
+    ${pts ? `
     <div class="list mt-4">
-      <div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Uses / Guidance</div>
-      ${uses}
+      <div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Key points</div>
+      ${pts}
     </div>` : ""}
 
-    ${sideEffects ? `
-    <div class="list mt-4">
-      <div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Precautions / Risks</div>
-      ${sideEffects}
-    </div>` : ""}
+    ${r.action ? `
+      <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3.5 text-sm text-white/80">
+        <div class="text-[10px] text-white/40 uppercase tracking-[0.1em] font-bold">Next action</div>
+        <div class="mt-1">${escapeHtml(r.action)}</div>
+      </div>
+    ` : ""}
 
+    ${r.warning ? `
     <div class="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-3.5 text-xs text-rose-200/80 leading-snug">
       <div class="flex items-center gap-2 mb-1.5 text-rose-400 font-bold uppercase tracking-wider text-[10px]">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
-        Important Warning
+        Note
       </div>
-      ${escapeHtml(reply.warnings || "This information is for guidance only. Consult a qualified doctor for medical advice.")}
+      ${escapeHtml(r.warning)}
+    </div>
+    ` : ""}
+  `;
+}
+
+function typingDotsHtml(label = "Typing") {
+  return `
+    <div class="typing">
+      <span class="typing-label">${escapeHtml(label)}</span>
+      <span class="typing-dots" aria-hidden="true">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </span>
     </div>
   `;
 }
 
-async function sendChat(message, imageFile) {
+function tryPlayPing() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = 740;
+    g.gain.value = 0.0001;
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    const t0 = ctx.currentTime;
+    g.gain.exponentialRampToValueAtTime(0.06, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+    o.stop(t0 + 0.2);
+    setTimeout(() => ctx.close?.(), 250);
+  } catch {
+    // ignore
+  }
+}
+
+function getQuickLocalReply(message) {
+  const t = String(message || "").trim().toLowerCase();
+  if (!t) return null;
+
+  const isHi = /^(hi|hello|hey|hii|hlo)\b/.test(t) || t === "hi" || t === "hello";
+  if (isHi) {
+    return {
+      type: "general",
+      title: "Hi 👋 I'm SwasthAI Assistant.",
+      description: "I can help you with:",
+      points: ["Find doctors 🏥", "Blood donors 🩸", "Government schemes 📄", "Health questions 💊"],
+      action: "Tell me what you need today (doctor / blood / schemes / symptoms).",
+      warning: "For emergencies, visit the nearest hospital or call local emergency services.",
+      _intent: "greeting",
+    };
+  }
+
+  if (t.includes("doctor")) {
+    return {
+      type: "feature",
+      title: "Find a doctor 🏥",
+      description: "You can use the Doctors section to contact available doctors.",
+      points: ["Open the Doctors section", "Choose specialty", "Call or WhatsApp"],
+      action: "Scroll to the Doctors section now.",
+      warning: "For severe symptoms, seek urgent medical care.",
+      _intent: "doctor",
+    };
+  }
+
+  if (t.includes("blood") || t.includes("donor")) {
+    return {
+      type: "feature",
+      title: "Need blood 🩸",
+      description: "Use the Blood Donor system to request donors and share your details.",
+      points: ["Mention blood group", "Share location/area", "Add contact number", "Urgency + hospital name (if available)"],
+      action: "Tell me: blood group + city/area + contact number.",
+      warning: "If it’s an emergency, go to the nearest hospital immediately.",
+      _intent: "blood",
+    };
+  }
+
+  if (t.includes("scheme") || t.includes("schemes") || t.includes("government") || t.includes("govt")) {
+    return {
+      type: "feature",
+      title: "Government schemes 📄",
+      description: "You can check the Schemes section for available programs and how to use them.",
+      points: ["Open Schemes section", "Read eligibility/summary", "Follow the ‘How to use’ steps"],
+      action: "Scroll to the Schemes section now.",
+      warning: "Always verify the latest eligibility at official sources or your nearest health center.",
+      _intent: "schemes",
+    };
+  }
+
+  return null;
+}
+
+async function sendChat(message, imageFile, opts = {}) {
+  const logEl = opts.logEl || $("#chatLog");
+  if (!logEl) return;
   const language = $("#languageSelect")?.value || "English";
   let imageSrc = null;
   if (imageFile) {
@@ -161,19 +291,30 @@ async function sendChat(message, imageFile) {
     });
   }
 
-  appendMessage({ role: "user", html: escapeHtml(message), imageSrc });
+  appendMessageToLog(logEl, { role: "user", html: escapeHtml(message), imageSrc });
+
+  // Local "real chatbot" behavior for common intents (instant replies)
+  if (!imageFile) {
+    const local = getQuickLocalReply(message);
+    if (local) {
+      appendMessageToLog(logEl, { role: "assistant", html: formatAssistantReply(local) });
+      if (opts.playSound) tryPlayPing();
+      if (local._intent === "doctor") location.hash = "#doctors";
+      if (local._intent === "schemes") location.hash = "#schemes";
+      return;
+    }
+  }
 
   const thinkingId = `thinking-${Math.random().toString(16).slice(2)}`;
-  const log = $("#chatLog");
   const thinking = document.createElement("div");
   thinking.className = "msg";
   thinking.id = thinkingId;
   thinking.innerHTML = `
     <div class="meta">SwasthAI • ${nowLabel()}</div>
-    <div class="bubble assistant">Thinking…</div>
+    <div class="bubble assistant"><div class="text-white/80 text-sm mb-1">Typing…</div>${typingDotsHtml("")}</div>
   `;
-  log.appendChild(thinking);
-  log.scrollTop = log.scrollHeight;
+  logEl.appendChild(thinking);
+  logEl.scrollTop = logEl.scrollHeight;
 
   try {
     const formData = new FormData();
@@ -191,19 +332,18 @@ async function sendChat(message, imageFile) {
     thinking.remove();
 
     if (!res.ok) {
-      appendMessage({
+      appendMessageToLog(logEl, {
         role: "assistant",
-        html: `<div class="font-semibold">Couldn’t process</div><div class="mt-2 text-white/80">${escapeHtml(
-          data?.error || "Please try again."
-        )}</div>`,
+        html: `<div class="font-semibold">Couldn’t process</div><div class="mt-2 text-white/80">${escapeHtml(data?.error || "Please try again.")}</div>`,
       });
       return;
     }
 
-    appendMessage({ role: "assistant", html: formatAssistantReply(data.reply || {}) });
+    appendMessageToLog(logEl, { role: "assistant", html: formatAssistantReply(data.reply || {}) });
+    if (opts.playSound) tryPlayPing();
   } catch (e) {
     thinking.remove();
-    appendMessage({
+    appendMessageToLog(logEl, {
       role: "assistant",
       html: `<div class="font-semibold">Network issue</div><div class="mt-2 text-white/80">Please check your connection and try again.</div>`,
     });
@@ -226,7 +366,7 @@ function initChat() {
     return;
   }
 
-  appendMessage({
+  appendMessageToLog(log, {
     role: "assistant",
     html: `<div class="font-semibold">Hi! I’m SwasthAI.</div>
       <div class="mt-2 text-white/80">Tell me your symptoms and I’ll share possible causes, precautions, and red flags.</div>`,
@@ -281,6 +421,90 @@ function initChat() {
       await sendChat(prompt);
     });
   }
+}
+
+function initFloatingChat() {
+  const btn = $("#floatChatBtn");
+  const box = $("#floatChatBox");
+  const close = $("#floatChatClose");
+  const msgs = $("#floatChatMessages");
+  const input = $("#floatChatInput");
+  const sendBtn = $("#floatChatSend");
+  const sug = $$("#floatChatBox [data-float-prompt]");
+
+  if (!btn || !box || !msgs || !input || !sendBtn) return;
+
+  const open = () => {
+    box.classList.remove("hidden");
+    box.classList.add("animate-fadeIn");
+    input.focus();
+  };
+  const hide = () => {
+    box.classList.add("hidden");
+  };
+
+  btn.addEventListener("click", () => {
+    if (box.classList.contains("hidden")) open();
+    else hide();
+  });
+  close?.addEventListener("click", hide);
+
+  // Seed greeting once
+  if (!msgs.dataset.seeded) {
+    msgs.dataset.seeded = "1";
+    appendMessageToLog(msgs, {
+      role: "assistant",
+      html: `
+        <div class="font-semibold">Hi 👋 I'm SwasthAI Assistant.</div>
+        <div class="mt-2 text-white/80">I can help you with:</div>
+        <div class="mt-2 text-white/80">• Find doctors 🏥<br>• Blood donors 🩸<br>• Government schemes 📄<br>• Health questions 💊</div>
+        <div class="mt-3 text-white/80">What do you need today?</div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button type="button" class="chip" data-quick="Find doctor">Find Doctor</button>
+          <button type="button" class="chip" data-quick="Need blood">Need Blood</button>
+          <button type="button" class="chip" data-quick="Government schemes">Schemes</button>
+        </div>
+      `,
+    });
+  }
+
+  // Auto open + greeting on site load
+  if (!window.__floatChatAutoOpened) {
+    window.__floatChatAutoOpened = true;
+    setTimeout(() => {
+      open();
+    }, 1500);
+  }
+
+  const doSend = async () => {
+    const msg = (input.value || "").trim();
+    if (!msg) return;
+    input.value = "";
+    await sendChat(msg, null, { logEl: msgs, playSound: true });
+  };
+
+  sendBtn.addEventListener("click", doSend);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      doSend();
+    }
+  });
+
+  for (const b of sug) {
+    b.addEventListener("click", async () => {
+      const p = b.getAttribute("data-float-prompt");
+      if (!p) return;
+      await sendChat(p, null, { logEl: msgs, playSound: true });
+    });
+  }
+
+  // Smart suggestion buttons inside greeting bubble
+  msgs.addEventListener("click", async (e) => {
+    const t = e.target?.getAttribute?.("data-quick");
+    if (!t) return;
+    await sendChat(t, null, { logEl: msgs, playSound: true });
+  });
 }
 
 function initReveal() {
@@ -913,6 +1137,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initMenu();
   initReveal();
   initChat();
+  initFloatingChat();
   initFinder();
   initData();
   initProfile();

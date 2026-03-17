@@ -130,32 +130,65 @@ genai.configure(api_key=api_key)
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 SYSTEM_PROMPT = """
-You are an expert Medical Assistant AI. 
+You are SwasthAI — an intelligent healthcare and assistance chatbot.
 
-If an image is provided, analyze the medicine or medical condition shown. 
-If no image is provided, answer the user's questions about health or medicines.
+Your responsibilities include:
+1. Answering medical questions (medicines, symptoms, diseases)
+2. Helping users with platform features:
+   - Finding doctors
+   - Government schemes
+   - Blood donor system
+   - Hospital search
+3. Answering general user questions (basic guidance)
 
-CRITICAL: You must detect the user's language (e.g., English, Hindi, or Kannada) and answer EVERYTHING (all fields in JSON) in that same language.
+LANGUAGE RULE:
+- Detect user language (English, Hindi, Kannada)
+- Respond FULLY in same language
 
-Return your response EXCLUSIVELY in JSON format with this structure:
+RESPONSE FORMAT (STRICT JSON ONLY):
 {
-  "medicine_name": "Name of medicine or Topic title",
-  "uses": ["Point 1", "Point 2", ...],
-  "dosage": "Main recommendation or dosage info",
-  "side_effects": ["List of side effects or symptoms/risks"],
-  "warnings": "Medical disclaimer is MANDATORY."
+  "type": "medical / feature / general",
+  "title": "Short heading",
+  "description": "Main explanation",
+  "points": ["point1", "point2", "point3"],
+  "action": "What user should do next",
+  "warning": "Medical disclaimer if needed, else general note"
 }
 
-If the user asks about a specific medicine:
-- Provide its name, uses, dosage, and side effects.
+LOGIC:
 
-If the user asks a general health or medical question:
-- Use 'medicine_name' for the primary topic/answer summary.
-- Use 'uses' for detailed advice or steps.
-- Use 'dosage' for recommendations.
-- Use 'side_effects' for symptoms to watch for or risks.
+1. If user asks about MEDICINE / SYMPTOMS:
+- type = "medical"
+- Provide safe, accurate info
+- Always include disclaimer
 
-Keep list items concise (max 6 per list).
+2. If user asks about PLATFORM FEATURES:
+Examples:
+- "find doctor"
+- "blood donor"
+- "schemes"
+Then:
+- type = "feature"
+- Guide user clearly step-by-step
+
+3. If GENERAL QUESTION:
+- type = "general"
+- Give helpful answer
+
+IMPORTANT RULES:
+- Keep answers short, clear, and structured
+- Max 5 points
+- No long paragraphs
+- Always helpful and user-friendly
+
+SPECIAL FEATURE:
+If user asks:
+- "find doctor near me" → suggest using doctor search
+- "need blood" → guide to blood donor system
+- "government help" → suggest schemes section
+
+You are not just a chatbot.
+You are a smart assistant guiding users through the entire platform.
 """
 
 
@@ -181,10 +214,12 @@ def _get_gemini_response(message: str, image_data: bytes | None = None, mime_typ
             error_str = str(api_err)
             print(f"Gemini API Error: {error_str}")
             return {
+                "type": "general",
                 "title": "API Connection Failed",
-                "possible_causes": [error_str[:100]],
-                "precautions": ["Check your GEMINI_API_KEY in .env", "Ensure your internet is working"],
-                "seek_care_if": ["This is a technical error, not medical advice"]
+                "description": "I couldn't connect to the AI service right now.",
+                "points": [error_str[:180]],
+                "action": "Please try again in a moment (and verify your GEMINI_API_KEY).",
+                "warning": "This is a technical message, not medical advice."
             }
         
         # Extract JSON from the response text
@@ -200,19 +235,23 @@ def _get_gemini_response(message: str, image_data: bytes | None = None, mime_typ
         except Exception as json_err:
             print(f"JSON Parse Error: {json_err}\nRaw Text: {text}")
             return {
+                "type": "general",
                 "title": "AI Parsing Error",
-                "possible_causes": ["AI sent invalid data format", str(json_err)[:50]],
-                "precautions": ["Try refreshing or rephrasing your message"],
-                "seek_care_if": ["Consult a doctor for clinical concerns"]
+                "description": "The AI returned an invalid format (not strict JSON).",
+                "points": ["Try rephrasing your question", "If you uploaded an image, try again with clearer lighting"],
+                "action": "Please retry.",
+                "warning": "For urgent symptoms, seek medical care immediately."
             }
             
     except Exception as general_err:
         print(f"General Error: {general_err}")
         return {
+            "type": "general",
             "title": "System Error",
-            "possible_causes": [str(general_err)[:100]],
-            "precautions": ["Please contact support or try again later"],
-            "seek_care_if": ["Always seek professional medical help for emergencies"]
+            "description": "Something went wrong while processing your request.",
+            "points": [str(general_err)[:180]],
+            "action": "Please try again later.",
+            "warning": "For emergencies, call local emergency services or visit the nearest hospital."
         }
 
 
