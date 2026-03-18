@@ -80,25 +80,7 @@
     <!-- Top nav -->
     <header class="sticky top-0 z-50 backdrop-blur-xl bg-ink-950/65 border-b border-white/10">
       <div class="mx-auto max-w-6xl px-4 sm:px-6">
-<<<<<<< HEAD
-        <div class="flex items-center justify-between gap-3 py-3 md:grid md:grid-cols-[auto,1fr,auto] md:items-center md:py-4">
-          <!-- Brand (logo only, no extra text) -->
-          <a href="#top" class="group inline-flex items-center min-w-0">
-            <img
-              src="/static/Gemini_Generated_Image_nw2rotnw2rotnw2r-removebg-preview.png"
-              alt="SwasthAI logo"
-              class="h-10 sm:h-12 md:h-16 w-auto max-w-[160px] sm:max-w-[220px] md:max-w-none object-contain object-left drop-shadow-[0_10px_28px_rgba(0,0,0,0.65)] group-hover:drop-shadow-[0_14px_40px_rgba(0,0,0,0.75)] transition"
-              loading="eager"
-            />
-          </a>
 
-          <!-- Center nav (matches screenshot structure) -->
-          <nav class="hidden md:flex items-center justify-center gap-1 text-sm text-white/75">
-            <a class="navlink" href="#chat">Chatbot</a>
-            <a class="navlink" href="#finder">Hospitals</a>
-            <a class="navlink" href="#doctors">Doctors</a>
-            <a class="navlink" href="#schemes">Schemes</a>
-=======
         <div class="flex items-center justify-between py-3">
           <a href="{{ url_for('home') }}" class="group inline-flex items-center gap-2">
             <span class="relative grid place-items-center h-9 w-9 rounded-xl bg-white/10 border border-white/15 shadow-soft">
@@ -115,12 +97,6 @@
             <a class="navlink" href="{{ url_for('doctors_page') }}" data-i18n="nav.doctors">Doctors</a>
             <a class="navlink" href="{{ url_for('schemes_page') }}" data-i18n="nav.schemes">Schemes</a>
             <a class="navlink" href="{{ url_for('donors_page') }}">Donors</a>
-            <a class="navlink" href="{{ url_for('home') }}">Home</a>
-            <a class="navlink" href="{{ url_for('chatbot_page') }}">Chatbot</a>
-            <a class="navlink" href="{{ url_for('hospitals_page') }}">Hospitals</a>
-            <a class="navlink" href="{{ url_for('doctors_page') }}">Doctors</a>
-            <a class="navlink" href="{{ url_for('schemes_page') }}">Schemes</a>
->>>>>>> 62cb8e42bf55df7c4867f0b9b940595aeef3cea7
           </nav>
 
           <div class="flex items-center gap-2">
