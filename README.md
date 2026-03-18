@@ -31,6 +31,7 @@ Then open `http://localhost:5000`.
 - Hospitals: `/hospitals`
 - Doctors: `/doctors`
 - Schemes: `/schemes`
+- Blood donors: `/donors`
 
 ## API Endpoints
 
@@ -42,12 +43,18 @@ Then open `http://localhost:5000`.
 - **Nearby hospitals (requires key)**: `GET /api/nearby_hospitals?lat=...&lng=...&radius=...`
 - **Profile update (logged-in)**: `POST /api/update-profile`
 - **Account type update (logged-in)**: `POST /update-user-type`
+- **Donors**
+  - `GET /api/donors?blood_group=...&area=...` — search donors (only donors with completed profiles and `user_type='donor'`)
+  - `POST /api/donor_requests` — create a request to a donor (form fields: `donor_id`, `reason` (required), `message` (optional), `slip` (optional file))
+  - `GET /api/donor_requests` — for donors: inbox; for users: sent requests
+  - `POST /api/donor_requests/<id>/status` — donors accept/reject (`{"status": "accepted"|"rejected"}`)
+  - `GET /api/donor_requests/<id>/slip` — download/view attached doctor slip (donor or requester only)
 
 ## Notes
 
 - `templates/index.html`: landing page UI (links to feature pages)
-- `templates/chatbot.html`, `templates/hospitals.html`, `templates/doctors.html`, `templates/schemes.html`: separate detailed pages
-- `static/app.js`: chatbot UX, hospital locator, doctors/schemes loading, profile sidebar
+- `templates/chatbot.html`, `templates/hospitals.html`, `templates/doctors.html`, `templates/schemes.html`, `templates/donors.html`: separate detailed pages
+- `static/app.js`: chatbot UX, hospital locator, doctors/schemes loading, profile sidebar, blood donor flows (search + requests), language toggle, bottom navigation
 - `static/styles.css`: small custom styles + reveal transitions
 - `app.py`: Flask backend (auth/profile stored in MongoDB + API endpoints)
 
@@ -78,11 +85,16 @@ If you use MongoDB Atlas, set `MONGODB_URI` to your Atlas connection string.
 ## Working status
 
 - **Working now (with MongoDB running)**:
-  - Separate pages: Home / Chatbot / Hospitals / Doctors / Schemes
+  - Separate pages: Home / Chatbot / Hospitals / Doctors / Schemes / Donors
   - Login / logout
   - Profile sidebar + edit profile + account type toggle (User/Donor)
   - Doctors + schemes load from backend APIs
   - Hospitals: GPS-based map + open Google Maps links (no API key needed)
+  - Donors:
+    - Users can search donors by blood group + area and send requests (with optional slip upload)
+    - Donors can see incoming requests, view slips, and Accept/Reject
+  - Language selector: basic English / Hindi / Kannada labels for main landing content + synced with chatbot language
+  - Mobile bottom navigation: Home / Chatbot / Hospitals / Doctors / Schemes / Donors
 
 - **Works when keys/credentials are configured**:
   - Chatbot AI responses: set `GEMINI_API_KEY`
